@@ -12,6 +12,24 @@ const compat = new FlatCompat({
 const eslintConfig = [
   ...compat.extends("next/core-web-vitals", "next/typescript"),
   {
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "NewExpression[callee.name='PrismaClient']",
+          message:
+            "CRITICAL: Import the shared instance from '@/lib/prisma' instead of instantiating a new client.",
+        },
+      ],
+    },
+  },
+  {
+    files: ["lib/prisma.ts"],
+    rules: {
+      "no-restricted-syntax": "off",
+    },
+  },
+  {
     ignores: [
       "node_modules/**",
       ".next/**",

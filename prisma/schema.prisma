@@ -27,6 +27,8 @@ model UserProfile {
   habits             Habit[]
   savingsGoals       SavingsGoal[]
   jobApplications    JobApplication[]
+  skills             Skill[]
+  moodEntries        MoodEntry[]
 }
 
 model LifeBlueprint {
@@ -63,14 +65,39 @@ model Milestone {
 }
 
 model Habit {
+  id            String      @id @default(cuid())
+  userId        String
+  title         String
+  streak        Int         @default(0)
+  lastCompleted DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user          UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habitLogs     HabitLog[]
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  date      DateTime @default(now())
+  completed Boolean  @default(false)
+
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+
+  @@unique([habitId, date])
+}
+
+model MoodEntry {
   id        String      @id @default(cuid())
   userId    String
-  title     String
-  streak    Int         @default(0)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  mood      Int
+  note      String?
+  date      DateTime    @default(now())
 
   user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
 }
 
 model SavingsGoal {
@@ -91,6 +118,17 @@ model JobApplication {
   company   String
   role      String
   status    String      @default("applied")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Skill {
+  id        String      @id @default(cuid())
+  userId    String
+  name      String
+  level     String      @default("beginner")
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
