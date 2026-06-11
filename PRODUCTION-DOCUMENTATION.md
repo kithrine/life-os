@@ -13,7 +13,7 @@ LifeOS is an AI-powered personal operating system that helps users understand wh
 - shadcn/ui
 - Clerk
 - Prisma
-- PostgreSQL (Neon)
+- PostgreSQL (Supabase)
 - OpenAI
 - Vercel
 - Vitest
