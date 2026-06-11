@@ -23,6 +23,7 @@ model UserProfile {
   habits             Habit[]
   savingsGoals       SavingsGoal[]
   jobApplications    JobApplication[]
+  skills             Skill[]
   moodEntries        MoodEntry[]
 }
 
@@ -113,6 +114,17 @@ model JobApplication {
   company   String
   role      String
   status    String      @default("applied")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Skill {
+  id        String      @id @default(cuid())
+  userId    String
+  name      String
+  level     String      @default("beginner")
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 
