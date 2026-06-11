@@ -14,6 +14,10 @@ model UserProfile {
   lifeStage          String?
   currentSituation   String?
   biggestChallenge   String?
+  careerGoals        String?
+  financialGoals     String?
+  healthGoals        String?
+  personalGrowthGoals String?
   futureVision       String?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
