@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model UserProfile {
+  id                 String           @id @default(cuid())
+  clerkUserId        String           @unique
+  name               String?
+  lifeStage          String?
+  currentSituation   String?
+  biggestChallenge   String?
+  futureVision       String?
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  blueprints         LifeBlueprint[]
+  goals              Goal[]
+  habits             Habit[]
+  savingsGoals       SavingsGoal[]
+  jobApplications    JobApplication[]
+}
+
+model LifeBlueprint {
+  id        String      @id @default(cuid())
+  userId    String
+  content   Json
+  summary   String
+  createdAt DateTime    @default(now())
+
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Goal {
+  id         String      @id @default(cuid())
+  userId     String
+  title      String
+  category   String
+  progress   Int         @default(0)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  user       UserProfile  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestones Milestone[]
+}
+
+model Milestone {
+  id        String   @id @default(cuid())
+  goalId    String
+  title     String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+}
+
+model Habit {
+  id        String      @id @default(cuid())
+  userId    String
+  title     String
+  streak    Int         @default(0)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SavingsGoal {
+  id            String      @id @default(cuid())
+  userId        String
+  title         String
+  targetAmount  Float
+  currentAmount Float       @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  user          UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model JobApplication {
+  id        String      @id @default(cuid())
+  userId    String
+  company   String
+  role      String
+  status    String      @default("applied")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
