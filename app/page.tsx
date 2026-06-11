@@ -1,8 +1,12 @@
 import Image from "next/image";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { LifeOSLogo } from "@/components/auth/lifeos-logo";
 import { LoginForm } from "@/components/auth/login-form";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { userId } = await auth();
+  if (userId) redirect("/dashboard");
   return (
     <main className="relative min-h-screen overflow-hidden">
       {/* Background image */}

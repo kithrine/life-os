@@ -16,8 +16,10 @@ export default async function CareerPage() {
     },
   });
 
-  const skills = profile?.skills ?? [];
-  const applications = profile?.jobApplications ?? [];
+  if (!profile) redirect("/onboarding");
+
+  const skills = profile.skills ?? [];
+  const applications = profile.jobApplications ?? [];
 
   return (
     <main className="max-w-4xl mx-auto px-4 py-10 space-y-10">
