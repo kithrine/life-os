@@ -8,9 +8,16 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
+    "test:health": "vitest --run tests/actions/habits tests/actions/mood tests/actions/life-score tests/components/health-dashboard tests/components/mood-tracker tests/components/habit-form",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "prisma:generate": "prisma generate",
+    "prisma:studio": "prisma studio",
+    "prisma:push": "prisma db push",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:format": "prisma format",
+    "prisma:pull": "prisma db pull"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
