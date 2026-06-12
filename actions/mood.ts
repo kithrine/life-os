@@ -3,24 +3,33 @@
 import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 
-export async function logMood(mood: number, note?: string): Promise<void> {
+// MoodEntry.userId references UserProfile.id, not the Clerk user id
+async function requireProfileId(): Promise<string> {
   const { userId } = await auth()
   if (!userId) throw new Error("Unauthorized")
+  const profile = await prisma.userProfile.findUnique({
+    where: { clerkUserId: userId },
+  })
+  if (!profile) throw new Error("Profile not found")
+  return profile.id
+}
+
+export async function logMood(mood: number, note?: string): Promise<void> {
   if (mood < 1 || mood > 5) throw new Error("Mood must be between 1 and 5")
+  const profileId = await requireProfileId()
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   await prisma.moodEntry.upsert({
-    where: { userId_date: { userId, date: today } },
+    where: { userId_date: { userId: profileId, date: today } },
     update: { mood, note },
-    create: { userId, mood, note, date: today },
+    create: { userId: profileId, mood, note, date: today },
   })
 }
 
 export async function getMoodHistory() {
-  const { userId } = await auth()
-  if (!userId) throw new Error("Unauthorized")
+  const profileId = await requireProfileId()
   return await prisma.moodEntry.findMany({
-    where: { userId },
+    where: { userId: profileId },
     orderBy: { date: "desc" },
   }) ?? []
 }

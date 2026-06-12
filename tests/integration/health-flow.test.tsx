@@ -5,6 +5,7 @@ import { getHealthScore } from "@/actions/life-score"
 // Mock fns are hoisted so they can be asserted on without importing
 // @/lib/prisma (currently not a module while it is commented out)
 const mocks = vi.hoisted(() => ({
+  userProfileFindUnique: vi.fn(),
   habitCreate: vi.fn(),
   habitFindMany: vi.fn(),
   habitUpdate: vi.fn(),
@@ -22,6 +23,9 @@ vi.mock("@clerk/nextjs/server", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    userProfile: {
+      findUnique: mocks.userProfileFindUnique,
+    },
     habit: {
       create: mocks.habitCreate,
       findMany: mocks.habitFindMany,
@@ -43,6 +47,10 @@ vi.mock("@/lib/prisma", () => ({
 beforeEach(() => {
   vi.clearAllMocks()
 
+  mocks.userProfileFindUnique.mockResolvedValue({
+    id: "profile-1",
+    clerkUserId: "test-user-id",
+  })
   mocks.habitCreate.mockResolvedValue({
     id: "habit-1",
     userId: "test-user-id",
@@ -82,7 +90,7 @@ describe("health flow integration", () => {
     await expect(completeHabit("habit-1")).resolves.not.toThrow()
 
     expect(mocks.habitCreate).toHaveBeenCalledWith({
-      data: { userId: "test-user-id", title: "Exercise" },
+      data: { userId: "profile-1", title: "Exercise" },
     })
     expect(mocks.habitUpdate).toHaveBeenCalledWith({
       where: { id: "habit-1" },
