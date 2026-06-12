@@ -13,6 +13,8 @@ type ClerkUser = {
 };
 
 type ProfileData = {
+  firstName: string | null;
+  lastName: string | null;
   name: string | null;
   lifeStage: string | null;
   currentSituation: string | null;
@@ -78,6 +80,7 @@ export function ProfileView({ clerkUser, profile, counts }: ProfileViewProps) {
 
   const displayName =
     form.name ||
+    `${profile.firstName ?? ""} ${profile.lastName ?? ""}`.trim() ||
     `${clerkUser.firstName ?? ""} ${clerkUser.lastName ?? ""}`.trim() ||
     "Your Name";
 
