@@ -115,8 +115,8 @@ export function ProfileView({ clerkUser, profile, counts }: ProfileViewProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 pb-12 pt-6 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-3xl space-y-6">
+    <div className="min-h-screen bg-gray-50 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-5">
 
         {/* Header card */}
         <div className="relative rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
