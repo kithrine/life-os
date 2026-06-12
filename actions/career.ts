@@ -29,6 +29,7 @@ export async function addSkill({
   });
 
   revalidatePath("/career");
+  revalidatePath("/dashboard");
 }
 
 export async function deleteSkill(id: string) {
@@ -37,6 +38,7 @@ export async function deleteSkill(id: string) {
 
   await prisma.skill.delete({ where: { id } });
   revalidatePath("/career");
+  revalidatePath("/dashboard");
 }
 
 export async function addJobApplication({
@@ -56,6 +58,7 @@ export async function addJobApplication({
   });
 
   revalidatePath("/career");
+  revalidatePath("/dashboard");
 }
 
 export async function updateJobStatus(id: string, status: string) {
@@ -68,6 +71,7 @@ export async function updateJobStatus(id: string, status: string) {
   });
 
   revalidatePath("/career");
+  revalidatePath("/dashboard");
 }
 
 export async function deleteJobApplication(id: string) {
@@ -76,4 +80,5 @@ export async function deleteJobApplication(id: string) {
 
   await prisma.jobApplication.delete({ where: { id } });
   revalidatePath("/career");
+  revalidatePath("/dashboard");
 }
