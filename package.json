@@ -17,7 +17,8 @@
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate dev",
     "prisma:format": "prisma format",
-    "prisma:pull": "prisma db pull"
+    "prisma:pull": "prisma db pull",
+    "seed:demo": "npx tsx prisma/seed-full.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
