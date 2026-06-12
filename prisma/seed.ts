@@ -2,247 +2,254 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../lib/generated/prisma/client";
+// @/lib/prisma creates its pg Pool from DATABASE_URL at module load, so it is
+// imported dynamically inside main() after dotenv has populated process.env.
+import type { prisma as PrismaInstance } from "@/lib/prisma";
+type Db = typeof PrismaInstance;
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes("supabase") ? { rejectUnauthorized: false } : undefined,
-});
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const DEMO_CLERK_USER_ID = "demo-seed-user";
 
-const daysAgo = (n: number) => new Date(Date.now() - n * 24 * 60 * 60 * 1000);
+const daysAgo = (n: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+};
+
+// Logs and mood entries upsert on a date-based unique key, so their dates are
+// normalized to local midnight to stay stable across same-day re-runs.
+const dayStart = (n: number) => {
+  const d = daysAgo(n);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+async function upsertGoal(
+  db: Db,
+  userId: string,
+  goal: { title: string; category: string; progress: number },
+  milestones: { title: string; completed: boolean }[],
+) {
+  const existing = await db.goal.findFirst({
+    where: { userId, title: goal.title },
+  });
+  const saved = existing
+    ? await db.goal.update({
+        where: { id: existing.id },
+        data: { category: goal.category, progress: goal.progress },
+      })
+    : await db.goal.create({ data: { userId, ...goal } });
+
+  for (const milestone of milestones) {
+    const found = await db.milestone.findFirst({
+      where: { goalId: saved.id, title: milestone.title },
+    });
+    if (found) {
+      await db.milestone.update({
+        where: { id: found.id },
+        data: { completed: milestone.completed },
+      });
+    } else {
+      await db.milestone.create({ data: { goalId: saved.id, ...milestone } });
+    }
+  }
+  return saved;
+}
+
+async function upsertHabit(
+  db: Db,
+  userId: string,
+  habit: { title: string; streak: number; lastCompleted: Date | null },
+) {
+  const existing = await db.habit.findFirst({
+    where: { userId, title: habit.title },
+  });
+  return existing
+    ? db.habit.update({
+        where: { id: existing.id },
+        data: { streak: habit.streak, lastCompleted: habit.lastCompleted },
+      })
+    : db.habit.create({ data: { userId, ...habit } });
+}
 
 async function main() {
-  console.log("Seeding LifeOS demo users...");
+  const { prisma } = await import("@/lib/prisma");
 
-  // Wipe previous seed users so the script is re-runnable
-  await prisma.userProfile.deleteMany({
-    where: { clerkUserId: { in: ["user_seed_alex", "user_seed_jordan", "user_seed_sam"] } },
+  console.log("Seeding LifeOS demo data...");
+
+  const profileData = {
+    name: "Demo User",
+    lifeStage: "early-career",
+    currentSituation: "Building skills and exploring career options",
+    biggestChallenge: "Staying consistent with habits and managing finances",
+    careerGoals: "Land a junior developer role within 6 months",
+    financialGoals: "Build a 3-month emergency fund",
+    healthGoals: "Exercise consistently and improve sleep",
+    personalGrowthGoals: "Read more and reduce screen time",
+    futureVision: "Work remotely as a full-stack developer",
+  };
+
+  const user = await prisma.userProfile.upsert({
+    where: { clerkUserId: DEMO_CLERK_USER_ID },
+    update: profileData,
+    create: { clerkUserId: DEMO_CLERK_USER_ID, ...profileData },
   });
 
-  // ─── Alex Johnson — student, career focus ─────────────────────────────────
-  await prisma.userProfile.create({
-    data: {
-      clerkUserId: "user_seed_alex",
-      name: "Alex Johnson",
-      lifeStage: "student",
-      currentSituation: "Finishing a CS degree while job hunting",
-      biggestChallenge: "Balancing coursework with interview prep",
-      careerGoals: "Land a frontend engineering role at a product company",
-      financialGoals: "Save $10,000 for an emergency fund",
-      healthGoals: "Run a half marathon",
-      personalGrowthGoals: "Read 24 books this year",
-      futureVision: "Senior engineer with a healthy, balanced life",
-      goals: {
-        create: [
-          {
-            title: "Save $10,000",
-            category: "finance",
-            progress: 62,
-            milestones: {
-              create: [
-                { title: "Open high-yield savings account", completed: true },
-                { title: "Reach $5,000", completed: true },
-                { title: "Reach $10,000", completed: false },
-              ],
-            },
-          },
-          {
-            title: "Run a Half Marathon",
-            category: "health",
-            progress: 75,
-            milestones: {
-              create: [
-                { title: "Run 5k without stopping", completed: true },
-                { title: "Run 10k race", completed: true },
-                { title: "Complete 18k training run", completed: false },
-              ],
-            },
-          },
-          {
-            title: "Read 24 Books",
-            category: "personal",
-            progress: 58,
-            milestones: {
-              create: [
-                { title: "Read 12 books", completed: true },
-                { title: "Read 24 books", completed: false },
-              ],
-            },
-          },
-        ],
-      },
-      habits: {
-        create: [
-          { title: "Morning Meditation", streak: 12, lastCompleted: daysAgo(0) },
-          { title: "Workout", streak: 8, lastCompleted: daysAgo(0) },
-          { title: "Drink Water", streak: 6, lastCompleted: daysAgo(1) },
-          { title: "No Sugar", streak: 3, lastCompleted: daysAgo(0) },
-        ],
-      },
-      savingsGoals: {
-        create: [{ title: "Emergency Fund", targetAmount: 5000, currentAmount: 3800 }],
-      },
-      jobApplications: {
-        create: [
-          { company: "Vercel", role: "Frontend Engineer", status: "interviewing" },
-          { company: "Linear", role: "Product Engineer", status: "applied" },
-          { company: "Stripe", role: "Software Engineer", status: "applied" },
-        ],
-      },
-      skills: {
-        create: [
-          { name: "React", level: "advanced" },
-          { name: "TypeScript", level: "intermediate" },
-          { name: "System Design", level: "intermediate" },
-          { name: "Node.js", level: "intermediate" },
-        ],
-      },
-    },
+  // Goals with milestones
+  await upsertGoal(
+    prisma,
+    user.id,
+    { title: "Get First Dev Job", category: "career", progress: 40 },
+    [
+      { title: "Update portfolio", completed: true },
+      { title: "Apply to 10 jobs", completed: false },
+      { title: "Complete take-home project", completed: false },
+    ],
+  );
+  await upsertGoal(
+    prisma,
+    user.id,
+    { title: "Build Emergency Fund", category: "finance", progress: 65 },
+    [
+      { title: "Save first $500", completed: true },
+      { title: "Reach $1000", completed: true },
+      { title: "Reach $3000", completed: false },
+    ],
+  );
+  await upsertGoal(
+    prisma,
+    user.id,
+    { title: "Improve Sleep Schedule", category: "health", progress: 55 },
+    [
+      { title: "Sleep by midnight 5 days", completed: true },
+      { title: "No phone 1hr before bed", completed: false },
+    ],
+  );
+
+  // Habits
+  const morningRun = await upsertHabit(prisma, user.id, {
+    title: "Morning Run",
+    streak: 7,
+    lastCompleted: new Date(),
+  });
+  const readTwenty = await upsertHabit(prisma, user.id, {
+    title: "Read 20 Minutes",
+    streak: 3,
+    lastCompleted: new Date(),
+  });
+  const drinkWater = await upsertHabit(prisma, user.id, {
+    title: "Drink Water",
+    streak: 0,
+    lastCompleted: daysAgo(3),
+  });
+  await upsertHabit(prisma, user.id, {
+    title: "Evening Stretch",
+    streak: 0,
+    lastCompleted: null,
   });
 
-  // ─── Jordan Lee — professional, finance focus ─────────────────────────────
-  await prisma.userProfile.create({
-    data: {
-      clerkUserId: "user_seed_jordan",
-      name: "Jordan Lee",
-      lifeStage: "early-career",
-      currentSituation: "Marketing manager looking to build wealth",
-      biggestChallenge: "Keeping expenses under control",
-      careerGoals: "Move into a director role within two years",
-      financialGoals: "Max out retirement contributions and save for a house",
-      healthGoals: "Consistent gym schedule",
-      personalGrowthGoals: "Learn public speaking",
-      futureVision: "Financially independent by 45",
-      goals: {
-        create: [
-          {
-            title: "House Down Payment",
-            category: "finance",
-            progress: 35,
-            milestones: {
-              create: [
-                { title: "Save $20,000", completed: true },
-                { title: "Save $60,000", completed: false },
-              ],
-            },
-          },
-          {
-            title: "Director Promotion",
-            category: "career",
-            progress: 40,
-            milestones: {
-              create: [
-                { title: "Lead a cross-team campaign", completed: true },
-                { title: "Complete leadership training", completed: false },
-              ],
-            },
-          },
-          { title: "Join Toastmasters", category: "personal", progress: 20 },
-        ],
-      },
-      habits: {
-        create: [
-          { title: "Track Expenses", streak: 21, lastCompleted: daysAgo(0) },
-          { title: "Gym Session", streak: 5, lastCompleted: daysAgo(1) },
-          { title: "Journal", streak: 14, lastCompleted: daysAgo(0) },
-        ],
-      },
-      savingsGoals: {
-        create: [
-          { title: "House Down Payment", targetAmount: 60000, currentAmount: 21000 },
-          { title: "Vacation Fund", targetAmount: 3000, currentAmount: 2400 },
-        ],
-      },
-      jobApplications: {
-        create: [
-          { company: "HubSpot", role: "Marketing Director", status: "applied" },
-          { company: "Notion", role: "Head of Growth", status: "rejected" },
-        ],
-      },
-      skills: {
-        create: [
-          { name: "SEO", level: "advanced" },
-          { name: "Content Strategy", level: "advanced" },
-          { name: "Data Analytics", level: "intermediate" },
-        ],
-      },
-    },
-  });
+  // Habit logs (Evening Stretch intentionally has none)
+  const habitLogs: { habitId: string; day: number }[] = [
+    ...[0, 1, 2, 3, 4, 5, 6].map((day) => ({ habitId: morningRun.id, day })),
+    ...[0, 1, 2].map((day) => ({ habitId: readTwenty.id, day })),
+    // Gap on days 0-3 causes the Drink Water streak reset
+    ...[4, 5, 6, 7].map((day) => ({ habitId: drinkWater.id, day })),
+  ];
+  for (const log of habitLogs) {
+    const date = dayStart(log.day);
+    await prisma.habitLog.upsert({
+      where: { habitId_date: { habitId: log.habitId, date } },
+      update: { completed: true },
+      create: { habitId: log.habitId, date, completed: true },
+    });
+  }
 
-  // ─── Sam Rivera — recent grad, health focus ───────────────────────────────
-  await prisma.userProfile.create({
-    data: {
-      clerkUserId: "user_seed_sam",
-      name: "Sam Rivera",
-      lifeStage: "recent-grad",
-      currentSituation: "First job out of college, building routines",
-      biggestChallenge: "Low energy and inconsistent sleep",
-      careerGoals: "Grow into a senior designer role",
-      financialGoals: "Pay off student loans",
-      healthGoals: "Sleep 8 hours and exercise 4x a week",
-      personalGrowthGoals: "Pick up rock climbing",
-      futureVision: "Healthy, creative, and debt-free",
-      goals: {
-        create: [
-          {
-            title: "Pay Off Student Loans",
-            category: "finance",
-            progress: 15,
-            milestones: {
-              create: [
-                { title: "Pay off first $5,000", completed: true },
-                { title: "Pay off half the balance", completed: false },
-              ],
-            },
-          },
-          { title: "Exercise 4x a Week", category: "health", progress: 80 },
-          { title: "Climb a V4 Boulder", category: "personal", progress: 45 },
-        ],
-      },
-      habits: {
-        create: [
-          { title: "Sleep by 11pm", streak: 4, lastCompleted: daysAgo(0) },
-          { title: "Morning Stretch", streak: 9, lastCompleted: daysAgo(0) },
-          { title: "Climbing Gym", streak: 2, lastCompleted: daysAgo(2) },
-          { title: "Cook at Home", streak: 7, lastCompleted: daysAgo(0) },
-        ],
-      },
-      savingsGoals: {
-        create: [{ title: "Loan Payoff Fund", targetAmount: 12000, currentAmount: 1800 }],
-      },
-      jobApplications: {
-        create: [
-          { company: "Figma", role: "Product Designer", status: "applied" },
-          { company: "Canva", role: "UI Designer", status: "interviewing" },
-        ],
-      },
-      skills: {
-        create: [
-          { name: "Figma", level: "advanced" },
-          { name: "Illustration", level: "intermediate" },
-          { name: "Prototyping", level: "intermediate" },
-          { name: "HTML/CSS", level: "beginner" },
-        ],
-      },
-    },
-  });
+  // Mood entries (last 7 entries, 1-5 scale)
+  const moods: { day: number; mood: number }[] = [
+    { day: 7, mood: 3 },
+    { day: 6, mood: 4 },
+    { day: 5, mood: 2 },
+    { day: 4, mood: 5 },
+    { day: 3, mood: 3 },
+    { day: 2, mood: 4 },
+    { day: 0, mood: 4 },
+  ];
+  for (const entry of moods) {
+    const date = dayStart(entry.day);
+    await prisma.moodEntry.upsert({
+      where: { userId_date: { userId: user.id, date } },
+      update: { mood: entry.mood },
+      create: { userId: user.id, date, mood: entry.mood },
+    });
+  }
 
-  const count = await prisma.userProfile.count({
-    where: { clerkUserId: { startsWith: "user_seed_" } },
-  });
-  console.log(`Done. ${count} demo users seeded (Alex, Jordan, Sam).`);
+  // Savings goals
+  const savingsGoals = [
+    { title: "Emergency Fund", targetAmount: 3000, currentAmount: 1950 },
+    { title: "New Laptop", targetAmount: 1200, currentAmount: 400 },
+  ];
+  for (const goal of savingsGoals) {
+    const existing = await prisma.savingsGoal.findFirst({
+      where: { userId: user.id, title: goal.title },
+    });
+    if (existing) {
+      await prisma.savingsGoal.update({
+        where: { id: existing.id },
+        data: { targetAmount: goal.targetAmount, currentAmount: goal.currentAmount },
+      });
+    } else {
+      await prisma.savingsGoal.create({ data: { userId: user.id, ...goal } });
+    }
+  }
+
+  // Job applications
+  const jobApplications = [
+    { company: "Acme Corp", role: "Junior Developer", status: "applied" },
+    { company: "Tech Studio", role: "Frontend Developer", status: "interview" },
+    { company: "StartupXYZ", role: "Full Stack Engineer", status: "rejected" },
+    { company: "Dev Agency", role: "React Developer", status: "applied" },
+  ];
+  for (const application of jobApplications) {
+    const existing = await prisma.jobApplication.findFirst({
+      where: { userId: user.id, company: application.company, role: application.role },
+    });
+    if (existing) {
+      await prisma.jobApplication.update({
+        where: { id: existing.id },
+        data: { status: application.status },
+      });
+    } else {
+      await prisma.jobApplication.create({ data: { userId: user.id, ...application } });
+    }
+  }
+
+  // Skills
+  const skills = [
+    { name: "JavaScript", level: "intermediate" },
+    { name: "React", level: "intermediate" },
+    { name: "Node.js", level: "beginner" },
+    { name: "SQL", level: "beginner" },
+  ];
+  for (const skill of skills) {
+    const existing = await prisma.skill.findFirst({
+      where: { userId: user.id, name: skill.name },
+    });
+    if (existing) {
+      await prisma.skill.update({
+        where: { id: existing.id },
+        data: { level: skill.level },
+      });
+    } else {
+      await prisma.skill.create({ data: { userId: user.id, ...skill } });
+    }
+  }
+
+  console.log(`Done. Demo data seeded for clerkUserId "${DEMO_CLERK_USER_ID}".`);
+  return prisma;
 }
 
 main()
-  .catch((e) => {
+  .then((prisma) => prisma.$disconnect())
+  .catch(async (e) => {
     console.error(e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
   });
