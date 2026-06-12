@@ -58,7 +58,7 @@ export function AiCoachDrawer({
 
   return (
     <aside
-      aria-label="AI Coach"
+      aria-label="AI Assistant"
       className={cn(
         "fixed inset-y-0 left-0 z-50 flex w-[calc(100vw-1rem)] max-w-96 flex-col border-r border-indigo-100 bg-white shadow-2xl ring-1 ring-indigo-100 transition-transform duration-200 md:left-60 md:w-96",
         open ? "translate-x-0" : "-translate-x-[calc(100%+15rem)]"
@@ -73,18 +73,18 @@ export function AiCoachDrawer({
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <h2 className="truncate text-base font-semibold text-gray-950">
-                  AI Coach
+                  AI Assistant
                 </h2>
                 <Sparkles className="h-3.5 w-3.5 text-violet-500" />
               </div>
               <p className="truncate text-xs font-medium text-indigo-600">
-                Fresh LifeOS context on every reply
+                Ask anything or update LifeOS by chatting
               </p>
             </div>
           </div>
           <button
             type="button"
-            aria-label="Close AI Coach"
+            aria-label="Close AI Assistant"
             onClick={onClose}
             className="rounded-lg p-2 text-gray-500 transition hover:bg-white hover:text-gray-900"
           >
@@ -174,7 +174,7 @@ export function AiCoachDrawer({
               }
             }}
             rows={1}
-            placeholder="Ask your coach..."
+            placeholder="What can I help you with today?"
             className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-2 py-2 text-sm text-gray-900 outline-none placeholder:text-gray-400"
           />
           {busy ? (
