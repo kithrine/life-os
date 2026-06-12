@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { Calendar } from "lucide-react";
+import { Briefcase, Target, Activity, DollarSign, Calendar, type LucideIcon } from "lucide-react";
 
-const EVENTS = [
-  { id: 1, title: "Job Interview — Vercel", date: "Tomorrow", time: "10:00 AM", emoji: "💼" },
-  { id: 2, title: "Goal Review Session", date: "Wed", time: "6:00 PM", emoji: "🎯" },
-  { id: 3, title: "5K Run", date: "Sat", time: "7:30 AM", emoji: "🏃" },
-  { id: 4, title: "Monthly Budget Review", date: "Jun 15", time: "8:00 PM", emoji: "💰" },
+type EventItem = { id: number; title: string; date: string; time: string; icon: LucideIcon };
+
+const EVENTS: EventItem[] = [
+  { id: 1, title: "Job Interview — Vercel", date: "Tomorrow", time: "10:00 AM", icon: Briefcase },
+  { id: 2, title: "Goal Review Session",    date: "Wed",      time: "6:00 PM",  icon: Target    },
+  { id: 3, title: "5K Run",                 date: "Sat",      time: "7:30 AM",  icon: Activity  },
+  { id: 4, title: "Monthly Budget Review",  date: "Jun 15",   time: "8:00 PM",  icon: DollarSign },
 ];
 
 export function UpcomingWidget() {
@@ -26,8 +28,8 @@ export function UpcomingWidget() {
       <div className="space-y-3">
         {EVENTS.map((event) => (
           <div key={event.id} className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-lg">
-              {event.emoji}
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gray-50">
+              <event.icon className="h-5 w-5 text-gray-500" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-gray-800">{event.title}</p>

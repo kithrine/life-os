@@ -33,6 +33,7 @@ describe("StatsBar", () => {
         habitsCount={4}
         financeCashflow={1350}
         financeSavingsRate={32}
+        healthScore={74}
       />
     );
     expect(screen.getByText("Goals")).toBeTruthy();
@@ -43,21 +44,21 @@ describe("StatsBar", () => {
 
   it("displays real goals count when provided", () => {
     render(
-      <StatsBar goalsCount={7} habitsCount={2} financeCashflow={null} financeSavingsRate={null} />
+      <StatsBar goalsCount={7} habitsCount={2} financeCashflow={null} financeSavingsRate={null} healthScore={null} />
     );
     expect(screen.getByText("7")).toBeTruthy();
   });
 
   it("displays formatted cashflow when financeCashflow is provided", () => {
     render(
-      <StatsBar goalsCount={3} habitsCount={4} financeCashflow={5000} financeSavingsRate={80} />
+      <StatsBar goalsCount={3} habitsCount={4} financeCashflow={5000} financeSavingsRate={80} healthScore={null} />
     );
     expect(screen.getByText("+$5,000")).toBeTruthy();
   });
 
   it("shows zero finance data when financeCashflow is null", () => {
     render(
-      <StatsBar goalsCount={0} habitsCount={0} financeCashflow={null} financeSavingsRate={null} />
+      <StatsBar goalsCount={0} habitsCount={0} financeCashflow={null} financeSavingsRate={null} healthScore={null} />
     );
     expect(screen.getByText("$0")).toBeTruthy();
     expect(screen.getByText("No finance data")).toBeTruthy();
@@ -114,10 +115,10 @@ describe("HabitsWidget", () => {
     expect(screen.getByRole("link", { name: /view all/i })).toBeTruthy();
   });
 
-  it("shows placeholder habits when no habits are passed", () => {
+  it("shows empty state when no habits are passed", () => {
     render(<HabitsWidget habits={[]} />);
-    expect(screen.getByText("Morning Run")).toBeTruthy();
-    expect(screen.getByText("Meditate")).toBeTruthy();
+    expect(screen.getByText("No habits tracked yet")).toBeTruthy();
+    expect(screen.getByText("Add your first habit")).toBeTruthy();
   });
 
   it("shows real habits when provided", () => {
@@ -126,9 +127,9 @@ describe("HabitsWidget", () => {
     expect(screen.getByText("Journal")).toBeTruthy();
   });
 
-  it("does not show placeholders when real habits exist", () => {
+  it("does not show empty state when real habits exist", () => {
     render(<HabitsWidget habits={realHabits} />);
-    expect(screen.queryByText("Morning Run")).toBeNull();
+    expect(screen.queryByText("No habits tracked yet")).toBeNull();
   });
 
   it("displays streak counts", () => {
@@ -260,22 +261,38 @@ describe("FinanceWidget", () => {
 
 // ── HealthWidget ──────────────────────────────────────────────────────────────
 describe("HealthWidget", () => {
+  const defaultProps = {
+    healthScore: 74,
+    moodToday: 4,
+    habitsToday: { completed: 3, total: 5 },
+  };
+
   it("renders Health heading and View details link", () => {
-    render(<HealthWidget />);
+    render(<HealthWidget {...defaultProps} />);
     expect(screen.getByText("Health")).toBeTruthy();
     expect(screen.getByRole("link", { name: /view details/i })).toBeTruthy();
   });
 
-  it("renders the health score", () => {
-    render(<HealthWidget />);
+  it("renders the health score from props", () => {
+    render(<HealthWidget {...defaultProps} />);
     expect(screen.getByText("74")).toBeTruthy();
   });
 
-  it("renders stats rows", () => {
-    render(<HealthWidget />);
-    expect(screen.getByText("Steps today")).toBeTruthy();
+  it("renders -- when healthScore is null", () => {
+    render(<HealthWidget healthScore={null} moodToday={null} habitsToday={{ completed: 0, total: 0 }} />);
+    expect(screen.getAllByText("--").length).toBeGreaterThan(0);
+  });
+
+  it("renders stats rows for mood and habits", () => {
+    render(<HealthWidget {...defaultProps} />);
     expect(screen.getByText("Daily mood")).toBeTruthy();
-    expect(screen.getByText("Sleep")).toBeTruthy();
+    expect(screen.getByText("Habits today")).toBeTruthy();
+  });
+
+  it("does not render Steps today or Sleep rows", () => {
+    render(<HealthWidget {...defaultProps} />);
+    expect(screen.queryByText("Steps today")).toBeNull();
+    expect(screen.queryByText("Sleep")).toBeNull();
   });
 });
 
