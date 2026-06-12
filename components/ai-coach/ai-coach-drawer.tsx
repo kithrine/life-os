@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { useChat, type UIMessage } from "@ai-sdk/react";
 import { Bot, Loader2, Send, Sparkles, Square, X } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 function messageText(message: UIMessage) {
@@ -21,8 +22,12 @@ export function AiCoachDrawer({
 }) {
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
   const { messages, sendMessage, status, error, stop } = useChat({
     experimental_throttle: 60,
+    onFinish: () => {
+      router.refresh();
+    },
   });
 
   const busy = status === "submitted" || status === "streaming";
