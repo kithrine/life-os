@@ -15,6 +15,8 @@ const mockClerkUser = {
 };
 
 const mockProfile: {
+  firstName: string | null;
+  lastName: string | null;
   name: string | null;
   lifeStage: string | null;
   currentSituation: string | null;
@@ -26,6 +28,8 @@ const mockProfile: {
   futureVision: string | null;
   createdAt: string;
 } = {
+  firstName: "Alex",
+  lastName: "Johnson",
   name: "Alex Johnson",
   lifeStage: "student",
   currentSituation: "Finishing a CS degree",
@@ -59,6 +63,18 @@ describe("ProfileView — view mode", () => {
   it("renders the user display name", () => {
     setup();
     expect(screen.getByText("Alex Johnson")).toBeTruthy();
+  });
+
+  it("renders saved profile first and last name when Clerk names are missing", () => {
+    render(
+      <ProfileView
+        clerkUser={{ ...mockClerkUser, firstName: null, lastName: null }}
+        profile={{ ...mockProfile, name: null, firstName: "Taylor", lastName: "Morgan" }}
+        counts={mockCounts}
+      />
+    );
+
+    expect(screen.getByText("Taylor Morgan")).toBeTruthy();
   });
 
   it("renders the user email", () => {
