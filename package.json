@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:health": "vitest --run tests/actions/habits tests/actions/mood tests/actions/life-score tests/components/health-dashboard tests/components/mood-tracker tests/components/habit-form",
+    "test:health": "vitest --run tests/actions/habits tests/actions/mood tests/actions/life-score tests/components/health-dashboard tests/integration/health-flow",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "postinstall": "prisma generate",
