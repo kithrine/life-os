@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { createHabit, completeHabit, deleteHabit, getHabits } from "@/actions/habits"
+import { createHabit, completeHabit, deleteHabit } from "@/actions/habits"
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "test-user-id" }),

@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { isOnboardingComplete } from "@/lib/user-profile";
 import { SkillsSection } from "@/components/career/skills-section";
 import { JobApplicationsSection } from "@/components/career/job-applications-section";
 
@@ -17,6 +18,7 @@ export default async function CareerPage() {
   });
 
   if (!profile) redirect("/onboarding");
+  if (!isOnboardingComplete(profile)) redirect("/onboarding");
 
   const skills = profile.skills ?? [];
   const applications = profile.jobApplications ?? [];

@@ -1,8 +1,20 @@
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { LifeOSLogo } from "@/components/auth/lifeos-logo";
+import {
+  getOrCreateUserProfileOnboardingStatus,
+  isOnboardingComplete,
+} from "@/lib/user-profile";
 import { completeOnboarding } from "./actions";
 import { OnboardingForm } from "./onboarding-form";
 
-export default function OnboardingPage() {
+export default async function OnboardingPage() {
+  const { userId } = await auth();
+  if (!userId) redirect("/");
+
+  const profile = await getOrCreateUserProfileOnboardingStatus(userId);
+  if (isOnboardingComplete(profile)) redirect("/dashboard");
+
   return (
     <main className="min-h-screen bg-background px-4 py-10">
       <div className="mx-auto flex w-full max-w-3xl flex-col">

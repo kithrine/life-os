@@ -15,6 +15,7 @@ function setupSignInMock({ status = "idle" as string } = {}) {
   (useSignIn as ReturnType<typeof vi.fn>).mockReturnValue({
     fetchStatus: "idle",
     errors: { emailAddress: null },
+    isLoaded: true,
     signIn: {
       password: mockPassword,
       create: mockCreate,
