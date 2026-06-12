@@ -1,4 +1,4 @@
-import { TrendingUp, Info } from "lucide-react";
+import { TrendingUp, Info, Mountain } from "lucide-react";
 
 const SCORE = 82;
 const RING_RADIUS = 42;
@@ -60,9 +60,7 @@ export function LifeScoreCard() {
           You&apos;re building momentum! Keep focusing on your priorities and stay
           consistent.
         </p>
-        <span className="text-2xl" aria-hidden>
-          🏔️
-        </span>
+        <Mountain className="h-6 w-6 text-indigo-400 shrink-0" aria-hidden />
       </div>
     </div>
   );
