@@ -11,6 +11,7 @@ import { CareerOverviewWidget } from "@/components/dashboard/career-overview-wid
 import { FinanceWidget } from "@/components/dashboard/finance-widget";
 import { HealthWidget } from "@/components/dashboard/health-widget";
 import { UpcomingWidget } from "@/components/dashboard/upcoming-widget";
+import { calculateGoalProgress } from "@/lib/goals";
 
 export default async function DashboardPage() {
   const { userId: clerkUserId } = await auth();
@@ -26,7 +27,11 @@ export default async function DashboardPage() {
   const profile = await prisma.userProfile.findUnique({
     where: { clerkUserId },
     include: {
-      goals: { orderBy: { createdAt: "desc" }, take: 3 },
+      goals: {
+        orderBy: { createdAt: "desc" },
+        take: 3,
+        include: { milestones: { select: { completed: true } } },
+      },
       habits: { orderBy: { streak: "desc" }, take: 4 },
       savingsGoals: { orderBy: { createdAt: "asc" }, take: 1 },
       financialAccounts: { where: { isArchived: false } },
@@ -47,7 +52,7 @@ export default async function DashboardPage() {
   const goals = (profile?.goals ?? []).map((g) => ({
     id: g.id,
     title: g.title,
-    progress: g.progress,
+    progress: calculateGoalProgress(g.milestones),
     category: g.category ?? "personal",
   }));
 
