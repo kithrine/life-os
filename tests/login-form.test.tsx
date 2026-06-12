@@ -3,12 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useSignIn } from "@clerk/nextjs";
 import { LoginForm } from "@/components/auth/login-form";
 
-const mockPush = vi.fn();
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush }),
-}));
-
 vi.mock("@clerk/nextjs", () => ({
   useSignIn: vi.fn(),
 }));
@@ -30,8 +24,16 @@ function setupSignInMock({ status = "idle" as string } = {}) {
   });
 }
 
+// Make window.location.href writable so we can assert on redirects
+Object.defineProperty(window, "location", {
+  writable: true,
+  configurable: true,
+  value: { href: "" },
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
+  (window.location as { href: string }).href = "";
   setupSignInMock();
 });
 
@@ -189,7 +191,7 @@ describe("LoginForm auth behavior", () => {
     fireEvent.click(screen.getByRole("button", { name: /log in/i }));
     await waitFor(() => {
       expect(mockFinalize).toHaveBeenCalled();
-      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+      expect(window.location.href).toBe("/dashboard");
     });
   });
 
