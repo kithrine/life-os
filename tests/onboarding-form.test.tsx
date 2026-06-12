@@ -3,14 +3,20 @@ import { describe, expect, it, vi } from "vitest";
 import { OnboardingForm } from "@/app/onboarding/onboarding-form";
 
 function selectMinimumAnswers() {
-  fireEvent.click(screen.getByRole("button", { name: /student/i }));
-  fireEvent.click(screen.getByRole("button", { name: /i need more structure/i }));
-  fireEvent.click(screen.getByRole("button", { name: /i want better habits/i }));
-  fireEvent.click(screen.getByRole("button", { name: /staying consistent/i }));
-  fireEvent.click(screen.getByRole("button", { name: /build skills/i }));
-  fireEvent.click(screen.getByRole("button", { name: /save money/i }));
-  fireEvent.click(screen.getByRole("button", { name: /move more/i }));
-  fireEvent.click(screen.getByRole("button", { name: /build confidence/i }));
+  [
+    "Student",
+    "I need more structure",
+    "I want better habits",
+    "Staying consistent",
+    "Build skills",
+    "Save money",
+    "Move more",
+    "Build confidence",
+  ].forEach((label) => {
+    const optionButton = screen.getByText(label).closest("button");
+    expect(optionButton).toBeTruthy();
+    fireEvent.click(optionButton!);
+  });
 }
 
 describe("OnboardingForm validation", () => {
