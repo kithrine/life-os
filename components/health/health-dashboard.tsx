@@ -660,6 +660,7 @@ export function HealthDashboard({ data }: { data: HealthDashboardData }) {
                     <SubmitRow pending={isPending} editing={false} />
                   </form>
                 )}
+
               </div>
             </section>
 
