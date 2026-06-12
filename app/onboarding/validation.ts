@@ -49,15 +49,24 @@ function formValue(formData: FormData, key: OnboardingField) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function joinedFormValues(formData: FormData, key: RequiredOnboardingField) {
+  return formData
+    .getAll(key)
+    .filter((value): value is string => typeof value === "string")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    .join(", ");
+}
+
 export function readOnboardingFormData(formData: FormData): OnboardingValues {
   return {
     lifeStage: formValue(formData, "lifeStage"),
-    currentSituation: formValue(formData, "currentSituation"),
-    biggestChallenge: formValue(formData, "biggestChallenge"),
-    careerGoals: formValue(formData, "careerGoals"),
-    financialGoals: formValue(formData, "financialGoals"),
-    healthGoals: formValue(formData, "healthGoals"),
-    personalGrowthGoals: formValue(formData, "personalGrowthGoals"),
+    currentSituation: joinedFormValues(formData, "currentSituation"),
+    biggestChallenge: joinedFormValues(formData, "biggestChallenge"),
+    careerGoals: joinedFormValues(formData, "careerGoals"),
+    financialGoals: joinedFormValues(formData, "financialGoals"),
+    healthGoals: joinedFormValues(formData, "healthGoals"),
+    personalGrowthGoals: joinedFormValues(formData, "personalGrowthGoals"),
     futureVision: formValue(formData, "futureVision"),
   };
 }
