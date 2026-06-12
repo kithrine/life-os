@@ -9,7 +9,9 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
-    seed: "tsx prisma/seed.ts",
+    // "npx tsx" (not bare "tsx") so `prisma db seed` works even when
+    // node_modules/.bin is not on PATH in the spawned shell (e.g. Windows)
+    seed: "npx tsx prisma/seed.ts",
   },
   datasource: {
     url: process.env["DATABASE_URL"],
