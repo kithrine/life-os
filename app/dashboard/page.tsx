@@ -29,6 +29,16 @@ export default async function DashboardPage() {
       goals: { orderBy: { createdAt: "desc" }, take: 3 },
       habits: { orderBy: { streak: "desc" }, take: 4 },
       savingsGoals: { orderBy: { createdAt: "asc" }, take: 1 },
+      financialAccounts: { where: { isArchived: false } },
+      transactions: {
+        where: {
+          date: {
+            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1),
+          },
+        },
+      },
+      netWorthSnapshots: { orderBy: { date: "desc" }, take: 1 },
       jobApplications: true,
       skills: { orderBy: { createdAt: "desc" }, take: 3 },
     },
@@ -57,10 +67,39 @@ export default async function DashboardPage() {
       }
     : null;
 
-  const savedThisMonth = savingsGoal?.currentAmount ?? null;
-  const savingsPercent = savingsGoal
-    ? Math.round((savingsGoal.currentAmount / savingsGoal.targetAmount) * 100)
-    : null;
+  const monthlyTransactions = profile?.transactions ?? [];
+  const monthlyIncome = monthlyTransactions
+    .filter((tx) => tx.type === "income" || tx.amount > 0)
+    .reduce((sum, tx) => sum + Math.max(tx.amount, 0), 0);
+  const monthlySpending = monthlyTransactions
+    .filter((tx) => tx.type === "expense" || tx.amount < 0)
+    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+  const financeCashflow =
+    monthlyTransactions.length > 0 ? monthlyIncome - monthlySpending : null;
+  const financeSavingsRate =
+    monthlyIncome > 0
+      ? Math.round(((monthlyIncome - monthlySpending) / monthlyIncome) * 100)
+      : null;
+
+  const financialAccounts = profile?.financialAccounts ?? [];
+  const derivedAssets = financialAccounts.reduce((sum, account) => {
+    if (account.type === "credit" || account.type === "loan") return sum;
+    return sum + Math.max(account.balance, 0);
+  }, 0);
+  const derivedLiabilities = financialAccounts.reduce((sum, account) => {
+    if (account.type === "credit" || account.type === "loan") {
+      return sum + Math.abs(account.balance);
+    }
+    return account.balance < 0 ? sum + Math.abs(account.balance) : sum;
+  }, 0);
+  const latestNetWorthSnapshot = profile?.netWorthSnapshots[0];
+  const netWorth = latestNetWorthSnapshot
+    ? latestNetWorthSnapshot.netWorth
+    : financialAccounts.length > 0
+      ? derivedAssets - derivedLiabilities
+      : null;
+  const hasFinanceData =
+    financialAccounts.length > 0 || monthlyTransactions.length > 0 || savingsGoal !== null;
 
   return (
     <div className="relative min-h-screen bg-gray-50">
@@ -88,8 +127,8 @@ export default async function DashboardPage() {
             <StatsBar
               goalsCount={goals.length}
               habitsCount={habits.length}
-              savedThisMonth={savedThisMonth}
-              savingsPercent={savingsPercent}
+              financeCashflow={financeCashflow}
+              financeSavingsRate={financeSavingsRate}
             />
           </div>
         </div>
@@ -107,7 +146,17 @@ export default async function DashboardPage() {
             jobApplications={profile?.jobApplications ?? []}
             skills={profile?.skills ?? []}
           />
-          <FinanceWidget savingsGoal={savingsGoal} />
+          <FinanceWidget
+            savingsGoal={savingsGoal}
+            summary={{
+              monthlyIncome,
+              monthlySpending,
+              cashflow: financeCashflow ?? 0,
+              savingsRate: financeSavingsRate,
+              netWorth,
+              hasData: hasFinanceData,
+            }}
+          />
           <HealthWidget />
           <UpcomingWidget />
         </div>

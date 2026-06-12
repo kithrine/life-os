@@ -3,16 +3,21 @@ import { CircleCheck, DollarSign, Flame, Heart } from "lucide-react";
 type StatsBarProps = {
   goalsCount: number;
   habitsCount: number;
-  savedThisMonth: number | null;
-  savingsPercent: number | null;
+  financeCashflow: number | null;
+  financeSavingsRate: number | null;
 };
 
 export function StatsBar({
   goalsCount,
   habitsCount,
-  savedThisMonth,
-  savingsPercent,
+  financeCashflow,
+  financeSavingsRate,
 }: StatsBarProps) {
+  const financeValue =
+    financeCashflow !== null
+      ? `${financeCashflow >= 0 ? "+" : "-"}$${Math.abs(financeCashflow).toLocaleString("en-US")}`
+      : "$0";
+
   const stats = [
     {
       label: "Goals",
@@ -37,12 +42,12 @@ export function StatsBar({
       icon: DollarSign,
       iconBg: "bg-green-50",
       iconColor: "text-green-600",
-      value:
-        savedThisMonth !== null
-          ? `$${savedThisMonth.toLocaleString("en-US")}`
-          : "$3,800",
-      sub1: "Saved this month",
-      sub2: `${savingsPercent ?? 76}% of monthly goal`,
+      value: financeValue,
+      sub1: financeCashflow !== null ? "Monthly cashflow" : "No finance data",
+      sub2:
+        financeSavingsRate !== null
+          ? `${financeSavingsRate}% savings rate`
+          : "Add income and expenses",
     },
     {
       label: "Health",

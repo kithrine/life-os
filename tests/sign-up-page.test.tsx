@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import SignUpPage from "@/app/sign-up/page";
+import SignUpPage from "@/app/sign-up/[[...sign-up]]/page";
 import { SignUp } from "@clerk/nextjs";
 
 vi.mock("@clerk/nextjs", () => ({
@@ -44,7 +44,7 @@ describe("SignUpPage", () => {
       expect.objectContaining({
         forceRedirectUrl: "/onboarding",
         fallbackRedirectUrl: "/onboarding",
-        signInUrl: "/",
+        signInUrl: "/sign-in",
       }),
       undefined
     );

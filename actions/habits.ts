@@ -1,6 +1,7 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
+import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 
 // Habit.userId references UserProfile.id, not the Clerk user id,
@@ -17,12 +18,20 @@ async function requireProfileId(): Promise<string> {
 
 export async function createHabit(title: string): Promise<void> {
   const profileId = await requireProfileId()
-  await prisma.habit.create({ data: { userId: profileId, title } })
+  const trimmedTitle = title.trim()
+  if (!trimmedTitle) throw new Error("Habit title is required")
+  await prisma.habit.create({ data: { userId: profileId, title: trimmedTitle } })
+  revalidatePath("/health")
+  revalidatePath("/dashboard")
 }
 
 export async function completeHabit(habitId: string): Promise<void> {
-  const { userId } = await auth()
-  if (!userId) throw new Error("Unauthorized")
+  const profileId = await requireProfileId()
+  const habit = await prisma.habit.findFirst({
+    where: { id: habitId, userId: profileId },
+  })
+  if (!habit) throw new Error("Habit not found")
+
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const existing = await prisma.habitLog.findFirst({
@@ -34,12 +43,20 @@ export async function completeHabit(habitId: string): Promise<void> {
     data: { streak: { increment: 1 }, lastCompleted: new Date() },
   })
   await prisma.habitLog.create({ data: { habitId, completed: true } })
+  revalidatePath("/health")
+  revalidatePath("/dashboard")
 }
 
 export async function deleteHabit(habitId: string): Promise<void> {
-  const { userId } = await auth()
-  if (!userId) throw new Error("Unauthorized")
+  const profileId = await requireProfileId()
+  const habit = await prisma.habit.findFirst({
+    where: { id: habitId, userId: profileId },
+  })
+  if (!habit) throw new Error("Habit not found")
+
   await prisma.habit.delete({ where: { id: habitId } })
+  revalidatePath("/health")
+  revalidatePath("/dashboard")
 }
 
 export async function getHabits() {

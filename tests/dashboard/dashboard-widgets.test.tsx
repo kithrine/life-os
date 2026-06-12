@@ -31,8 +31,8 @@ describe("StatsBar", () => {
       <StatsBar
         goalsCount={3}
         habitsCount={4}
-        savedThisMonth={3800}
-        savingsPercent={76}
+        financeCashflow={1350}
+        financeSavingsRate={32}
       />
     );
     expect(screen.getByText("Goals")).toBeTruthy();
@@ -43,23 +43,24 @@ describe("StatsBar", () => {
 
   it("displays real goals count when provided", () => {
     render(
-      <StatsBar goalsCount={7} habitsCount={2} savedThisMonth={null} savingsPercent={null} />
+      <StatsBar goalsCount={7} habitsCount={2} financeCashflow={null} financeSavingsRate={null} />
     );
     expect(screen.getByText("7")).toBeTruthy();
   });
 
-  it("displays formatted savings amount when savedThisMonth is provided", () => {
+  it("displays formatted cashflow when financeCashflow is provided", () => {
     render(
-      <StatsBar goalsCount={3} habitsCount={4} savedThisMonth={5000} savingsPercent={80} />
+      <StatsBar goalsCount={3} habitsCount={4} financeCashflow={5000} financeSavingsRate={80} />
     );
-    expect(screen.getByText("$5,000")).toBeTruthy();
+    expect(screen.getByText("+$5,000")).toBeTruthy();
   });
 
-  it("falls back to $3,800 when savedThisMonth is null", () => {
+  it("shows zero finance data when financeCashflow is null", () => {
     render(
-      <StatsBar goalsCount={0} habitsCount={0} savedThisMonth={null} savingsPercent={null} />
+      <StatsBar goalsCount={0} habitsCount={0} financeCashflow={null} financeSavingsRate={null} />
     );
-    expect(screen.getByText("$3,800")).toBeTruthy();
+    expect(screen.getByText("$0")).toBeTruthy();
+    expect(screen.getByText("No finance data")).toBeTruthy();
   });
 });
 
@@ -214,33 +215,42 @@ describe("FinanceWidget", () => {
     currentAmount: 4000,
     targetAmount: 5000,
   };
+  const summary = {
+    monthlyIncome: 4200,
+    monthlySpending: 2850,
+    cashflow: 1350,
+    savingsRate: 32,
+    netWorth: 12000,
+    hasData: true,
+  };
 
   it("renders Finance heading and View details link", () => {
-    render(<FinanceWidget savingsGoal={null} />);
+    render(<FinanceWidget savingsGoal={null} summary={{ ...summary, hasData: false }} />);
     expect(screen.getByText("Finance")).toBeTruthy();
     expect(screen.getByRole("link", { name: /view details/i })).toBeTruthy();
   });
 
-  it("shows placeholder goal name when savingsGoal is null", () => {
-    render(<FinanceWidget savingsGoal={null} />);
-    expect(screen.getByText("Emergency Fund")).toBeTruthy();
+  it("shows empty savings goal state when savingsGoal is null", () => {
+    render(<FinanceWidget savingsGoal={null} summary={{ ...summary, hasData: false }} />);
+    expect(screen.getByText("No savings goal yet")).toBeTruthy();
   });
 
   it("shows real goal name when provided", () => {
-    render(<FinanceWidget savingsGoal={{ ...goal, name: "House Down Payment" }} />);
+    render(<FinanceWidget savingsGoal={{ ...goal, name: "House Down Payment" }} summary={summary} />);
     expect(screen.getByText("House Down Payment")).toBeTruthy();
   });
 
   it("shows calculated percentage", () => {
-    render(<FinanceWidget savingsGoal={goal} />);
+    render(<FinanceWidget savingsGoal={goal} summary={summary} />);
     expect(screen.getByText("80%")).toBeTruthy();
   });
 
-  it("renders income, expenses, and net savings rows", () => {
-    render(<FinanceWidget savingsGoal={null} />);
+  it("renders income, expenses, and cashflow rows", () => {
+    render(<FinanceWidget savingsGoal={null} summary={summary} />);
     expect(screen.getByText("Monthly Income")).toBeTruthy();
     expect(screen.getByText("Expenses")).toBeTruthy();
-    expect(screen.getByText("Net Savings")).toBeTruthy();
+    expect(screen.getByText("Cashflow")).toBeTruthy();
+    expect(screen.getByText("+$1,350")).toBeTruthy();
   });
 });
 

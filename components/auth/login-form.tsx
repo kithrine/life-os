@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSignIn } from "@clerk/nextjs";
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,11 +9,35 @@ import { cn } from "@/lib/utils";
 const CLERK_ERROR_MAP: Record<string, string> = {
   form_password_incorrect: "Incorrect email or password",
   form_identifier_not_found: "No account found with that email",
+  form_identifier_not_verified: "Please verify your email before signing in",
+  form_password_pwned: "Please reset your password before signing in",
+  form_param_format_invalid: "Please check your email and password",
+  session_exists: "You are already signed in",
   too_many_requests: "Too many attempts, please try again later",
 };
 
 function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+type ClerkErrorLike = {
+  code?: string;
+  message?: string;
+  longMessage?: string;
+  errors?: ClerkErrorLike[];
+};
+
+function getAuthErrorMessage(error: unknown, fallback: string) {
+  const clerkError = error as ClerkErrorLike;
+  const firstError = clerkError.errors?.[0] ?? clerkError;
+  const code = firstError.code ?? "";
+
+  return (
+    CLERK_ERROR_MAP[code] ??
+    firstError.longMessage ??
+    firstError.message ??
+    fallback
+  );
 }
 
 type OAuthStrategy = "oauth_google" | "oauth_microsoft" | "oauth_apple";
@@ -61,15 +86,21 @@ export function LoginForm() {
       const { error } = await signIn.password({ emailAddress: email, password });
 
       if (error) {
-        const code = (error as { code?: string }).code ?? "";
-        setAuthError(CLERK_ERROR_MAP[code] ?? "Something went wrong, please try again");
+        setAuthError(getAuthErrorMessage(error, "Something went wrong, please try again"));
         return;
       }
 
-      await signIn.finalize();
+      const { error: finalizeError } = await signIn.finalize();
+      if (finalizeError) {
+        setAuthError(
+          getAuthErrorMessage(finalizeError, "Could not finish signing in. Please try again")
+        );
+        return;
+      }
+
       window.location.href = "/dashboard";
-    } catch {
-      setAuthError("Something went wrong, please try again");
+    } catch (error) {
+      setAuthError(getAuthErrorMessage(error, "Something went wrong, please try again"));
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +114,7 @@ export function LoginForm() {
       actionCompleteRedirectUrl: "/dashboard",
     });
     if (error) {
-      setAuthError("OAuth sign-in failed. Please try again.");
+      setAuthError(getAuthErrorMessage(error, "OAuth sign-in failed. Please try again."));
     }
   }
 
@@ -233,9 +264,9 @@ export function LoginForm() {
 
       <p className="text-center text-sm text-gray-500 mt-6">
         Don&apos;t have an account?{" "}
-        <a href="/sign-up" className="text-indigo-600 font-medium hover:underline">
+        <Link href="/sign-up" className="text-indigo-600 font-medium hover:underline">
           Sign up
-        </a>
+        </Link>
       </p>
     </div>
   );

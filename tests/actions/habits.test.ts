@@ -1,8 +1,12 @@
 import { describe, it, expect, vi } from "vitest"
-import { createHabit, completeHabit, deleteHabit, getHabits } from "@/actions/habits"
+import { createHabit, completeHabit, deleteHabit } from "@/actions/habits"
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "test-user-id" }),
+}))
+
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({
@@ -15,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     habit: {
       create: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue({ id: "habit-1", userId: "profile-1" }),
       findMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),

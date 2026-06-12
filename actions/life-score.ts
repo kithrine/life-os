@@ -3,23 +3,27 @@
 import { auth } from "@clerk/nextjs/server"
 import { prisma } from "@/lib/prisma"
 
-export async function getHealthScore(): Promise<number> {
+async function getProfileId(): Promise<string | null> {
   const { userId } = await auth()
   if (!userId) throw new Error("Unauthorized")
 
-  // Health data is keyed by UserProfile.id, not the Clerk user id;
-  // no profile yet means no health data
+  // Health data is keyed by UserProfile.id, not the Clerk user id.
   const profile = await prisma.userProfile.findUnique({
     where: { clerkUserId: userId },
   })
-  if (!profile) return 0
+  return profile?.id ?? null
+}
 
-  const habits = await prisma.habit.findMany({ where: { userId: profile.id } }) ?? []
+export async function getHealthScore(): Promise<number> {
+  const profileId = await getProfileId()
+  if (!profileId) return 0
+
+  const habits = await prisma.habit.findMany({ where: { userId: profileId } }) ?? []
   const habitLogs = await prisma.habitLog.findMany({
-    where: { habit: { userId: profile.id }, completed: true },
+    where: { habit: { userId: profileId }, completed: true },
   }) ?? []
   const moodEntries = await prisma.moodEntry.findMany({
-    where: { userId: profile.id },
+    where: { userId: profileId },
   }) ?? []
 
   if (!habits.length && !moodEntries.length) return 0

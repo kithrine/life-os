@@ -1,17 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { Sidebar } from "@/components/dashboard/sidebar";
+import {
+  getOrCreateUserProfileOnboardingStatus,
+  isOnboardingComplete,
+} from "@/lib/user-profile";
 
 export default async function ProfileLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
   if (!userId) redirect("/");
 
-  const profile = await prisma.userProfile.findUnique({
-    where: { clerkUserId: userId },
-    select: { id: true },
-  });
-  if (!profile) redirect("/onboarding");
+  const profile = await getOrCreateUserProfileOnboardingStatus(userId);
+  if (!isOnboardingComplete(profile)) redirect("/onboarding");
 
   return (
     <div className="flex min-h-screen bg-gray-50">
