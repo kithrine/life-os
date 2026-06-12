@@ -1,6 +1,7 @@
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { getHealthScore } from "@/actions/life-score";
 import { HeroBanner } from "@/components/dashboard/hero-banner";
 import { LifeScoreCard } from "@/components/dashboard/life-score-card";
 import { StatsBar } from "@/components/dashboard/stats-bar";
@@ -45,29 +46,47 @@ export default async function DashboardPage() {
   const greeting =
     hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
-  const profile = await prisma.userProfile.findUnique({
-    where: { clerkUserId },
-    include: {
-      goals: {
-        orderBy: { createdAt: "desc" },
-        take: 3,
-        include: { milestones: { select: { completed: true } } },
-      },
-      habits: { orderBy: { streak: "desc" }, take: 4 },
-      savingsGoals: { orderBy: { createdAt: "asc" }, take: 1 },
-      financialAccounts: { where: { isArchived: false } },
-      transactions: {
-        where: {
-          date: {
-            gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-            lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1),
+  const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+  const todayEnd = new Date(new Date().setHours(23, 59, 59, 999));
+
+  const [profile, healthScore] = await Promise.all([
+    prisma.userProfile.findUnique({
+      where: { clerkUserId },
+      include: {
+        goals: {
+          orderBy: { createdAt: "desc" },
+          take: 3,
+          include: { milestones: { select: { completed: true } } },
+        },
+        habits: {
+          orderBy: { streak: "desc" },
+          include: {
+            habitLogs: {
+              where: { date: { gte: todayStart, lt: todayEnd } },
+            },
           },
         },
+        savingsGoals: { orderBy: { createdAt: "asc" }, take: 1 },
+        financialAccounts: { where: { isArchived: false } },
+        transactions: {
+          where: {
+            date: {
+              gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+              lt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1),
+            },
+          },
+        },
+        moodEntries: {
+          where: { date: { gte: todayStart, lt: todayEnd } },
+          orderBy: { date: "desc" },
+          take: 1,
+        },
+        jobApplications: true,
+        skills: { orderBy: { createdAt: "desc" }, take: 3 },
       },
-      jobApplications: true,
-      skills: { orderBy: { createdAt: "desc" }, take: 3 },
-    },
-  });
+    }),
+    getHealthScore(),
+  ]);
 
   const goals = (profile?.goals ?? []).map((g) => ({
     id: g.id,
@@ -76,12 +95,17 @@ export default async function DashboardPage() {
     category: g.category ?? "personal",
   }));
 
-  const habits = (profile?.habits ?? []).map((h) => ({
+  const allHabits = profile?.habits ?? [];
+  const habits = allHabits.map((h) => ({
     id: h.id,
     name: h.title,
     streak: h.streak,
     icon: "✅",
   }));
+  const habitsCompletedToday = allHabits.filter((h) =>
+    h.habitLogs.some((l) => l.completed)
+  ).length;
+  const moodToday = profile?.moodEntries[0]?.mood ?? null;
 
   const savingsGoal = profile?.savingsGoals[0]
     ? {
@@ -150,6 +174,7 @@ export default async function DashboardPage() {
               habitsCount={habits.length}
               financeCashflow={financeCashflow}
               financeSavingsRate={financeSavingsRate}
+              healthScore={healthScore}
             />
           </div>
         </div>
@@ -178,7 +203,11 @@ export default async function DashboardPage() {
               hasData: hasFinanceData,
             }}
           />
-          <HealthWidget />
+          <HealthWidget
+            healthScore={healthScore}
+            moodToday={moodToday}
+            habitsToday={{ completed: habitsCompletedToday, total: allHabits.length }}
+          />
           <UpcomingWidget />
         </div>
       </div>

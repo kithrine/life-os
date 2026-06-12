@@ -5,13 +5,23 @@ type StatsBarProps = {
   habitsCount: number;
   financeCashflow: number | null;
   financeSavingsRate: number | null;
+  healthScore: number | null;
 };
+
+function healthLabel(score: number | null): string {
+  if (score === null) return "";
+  if (score >= 80) return "Great";
+  if (score >= 60) return "Good";
+  if (score >= 40) return "Fair";
+  return "Needs work";
+}
 
 export function StatsBar({
   goalsCount,
   habitsCount,
   financeCashflow,
   financeSavingsRate,
+  healthScore,
 }: StatsBarProps) {
   const financeValue =
     financeCashflow !== null
@@ -24,18 +34,18 @@ export function StatsBar({
       icon: CircleCheck,
       iconBg: "bg-indigo-50",
       iconColor: "text-indigo-600",
-      value: String(goalsCount || 6),
+      value: String(goalsCount),
       sub1: "Active",
-      sub2: "2 due soon",
+      sub2: "",
     },
     {
       label: "Habits",
       icon: Flame,
       iconBg: "bg-orange-50",
       iconColor: "text-orange-500",
-      value: String(habitsCount || 4),
+      value: String(habitsCount),
       sub1: "On track",
-      sub2: "2 perfect weeks",
+      sub2: "",
     },
     {
       label: "Finance",
@@ -54,10 +64,10 @@ export function StatsBar({
       icon: Heart,
       iconBg: "bg-rose-50",
       iconColor: "text-rose-500",
-      value: "74",
+      value: healthScore !== null ? String(healthScore) : "--",
       sub1: "Health score",
-      sub2: "Good",
-      sub2Color: "text-green-500",
+      sub2: healthLabel(healthScore),
+      sub2Color: healthScore !== null ? "text-green-500" : "text-gray-400",
     },
   ];
 
@@ -75,7 +85,9 @@ export function StatsBar({
           </div>
           <p className="mt-2 text-3xl font-extrabold text-gray-900">{stat.value}</p>
           <p className="mt-0.5 text-sm text-gray-600">{stat.sub1}</p>
-          <p className={`text-xs ${stat.sub2Color ?? "text-gray-400"}`}>{stat.sub2}</p>
+          {stat.sub2 && (
+            <p className={`text-xs ${stat.sub2Color ?? "text-gray-400"}`}>{stat.sub2}</p>
+          )}
         </div>
       ))}
     </div>
