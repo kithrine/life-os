@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState, useTransition } from "react";
+import { FormEvent, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowDownRight,
@@ -14,25 +14,24 @@ import {
   Pencil,
   PiggyBank,
   Plus,
+  PlusCircle,
   ReceiptText,
   Target,
   Trash2,
   WalletCards,
 } from "lucide-react";
 import {
+  contributeSavingsGoal,
   createBudget,
   createFinancialAccount,
-  createNetWorthSnapshot,
   createSavingsGoal,
   createTransaction,
   deleteBudget,
   deleteFinancialAccount,
-  deleteNetWorthSnapshot,
   deleteSavingsGoal,
   deleteTransaction,
   updateBudget,
   updateFinancialAccount,
-  updateNetWorthSnapshot,
   updateSavingsGoal,
   updateTransaction,
 } from "@/actions/finance";
@@ -41,12 +40,11 @@ import type {
   FinanceAccount,
   FinanceBudget,
   FinanceDashboardData,
-  FinanceNetWorthSnapshot,
   FinanceSavingsGoal,
   FinanceTransaction,
 } from "./types";
 
-type ActiveForm = "transaction" | "account" | "budget" | "savings" | "snapshot";
+type ActiveForm = "transaction" | "account" | "budget" | "savings";
 
 const ACCOUNT_TYPES = ["checking", "savings", "investment", "credit", "cash", "loan"];
 const TRANSACTION_TYPES = ["expense", "income", "transfer", "adjustment"];
@@ -93,10 +91,8 @@ const emptySavingsForm = {
   currentAmount: "",
 };
 
-const emptySnapshotForm = {
-  date: todayInput(),
-  assets: "",
-  liabilities: "",
+const emptyContributionForm = {
+  amount: "",
 };
 
 function formatCurrency(value: number) {
@@ -129,7 +125,9 @@ function Sparkline({
   values: number[];
   color?: string;
 }) {
-  if (values.length === 0) {
+  const safeValues = values.filter((value) => Number.isFinite(value));
+
+  if (safeValues.length === 0) {
     return (
       <svg viewBox="0 0 112 42" className="h-11 w-28" aria-hidden="true">
         <path d="M4 30 C24 20 40 36 58 26 S88 20 108 28" fill="none" stroke="#e5e7eb" strokeWidth="3" strokeLinecap="round" strokeDasharray="4 5" />
@@ -137,7 +135,7 @@ function Sparkline({
     );
   }
 
-  if (values.length === 1) {
+  if (safeValues.length === 1) {
     return (
       <svg viewBox="0 0 112 42" className="h-11 w-28" aria-hidden="true">
         <line x1="10" y1="24" x2="102" y2="24" stroke="#e5e7eb" strokeWidth="3" strokeLinecap="round" />
@@ -146,12 +144,39 @@ function Sparkline({
     );
   }
 
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  if (safeValues.length === 2) {
+    const [first, second] = safeValues;
+    const maxAbs = Math.max(Math.abs(first), Math.abs(second), 1);
+    const slope = Math.max(-1, Math.min((second - first) / maxAbs, 1)) * 10;
+    const firstY = 22 + slope / 2;
+    const secondY = 22 - slope / 2;
+
+    return (
+      <svg viewBox="0 0 112 42" className="h-11 w-28" aria-hidden="true">
+        <line x1="10" y1="34" x2="102" y2="34" stroke="#f3f4f6" strokeWidth="2" strokeLinecap="round" />
+        <polyline
+          points={`16,${firstY} 96,${secondY}`}
+          fill="none"
+          stroke={color}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <circle cx="16" cy={firstY} r="2.5" fill={color} />
+        <circle cx="96" cy={secondY} r="2.5" fill={color} />
+      </svg>
+    );
+  }
+
+  const min = Math.min(...safeValues);
+  const max = Math.max(...safeValues);
   const range = max - min || 1;
-  const points = values.map((value, index) => {
-    const x = 6 + (index / (values.length - 1)) * 100;
-    const y = 34 - ((value - min) / range) * 26;
+  const padding = Math.max(range * 0.18, Math.max(Math.abs(max), Math.abs(min), 1) * 0.02);
+  const chartMin = min - padding;
+  const chartRange = range + padding * 2;
+  const points = safeValues.map((value, index) => {
+    const x = 6 + (index / (safeValues.length - 1)) * 100;
+    const y = 34 - ((value - chartMin) / chartRange) * 26;
     return `${x},${y}`;
   });
 
@@ -310,6 +335,7 @@ function EmptyInline({ text }: { text: string }) {
 
 export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
   const router = useRouter();
+  const quickAddRef = useRef<HTMLElement>(null);
   const [isPending, startTransition] = useTransition();
   const [activeForm, setActiveForm] = useState<ActiveForm>("transaction");
   const [editing, setEditing] = useState<{ kind: ActiveForm; id: string } | null>(null);
@@ -319,7 +345,9 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
   const [transactionForm, setTransactionForm] = useState(emptyTransactionForm);
   const [budgetForm, setBudgetForm] = useState(emptyBudgetForm);
   const [savingsForm, setSavingsForm] = useState(emptySavingsForm);
-  const [snapshotForm, setSnapshotForm] = useState(emptySnapshotForm);
+  const [contributingGoalId, setContributingGoalId] = useState<string | null>(null);
+  const [contributionForm, setContributionForm] = useState(emptyContributionForm);
+  const [contributionError, setContributionError] = useState<string | null>(null);
 
   const insightClasses = {
     neutral: "bg-indigo-50 text-indigo-700 ring-indigo-100",
@@ -385,7 +413,9 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
     setTransactionForm({ ...emptyTransactionForm, date: todayInput() });
     setBudgetForm(emptyBudgetForm);
     setSavingsForm(emptySavingsForm);
-    setSnapshotForm({ ...emptySnapshotForm, date: todayInput() });
+    setContributingGoalId(null);
+    setContributionForm(emptyContributionForm);
+    setContributionError(null);
   }
 
   function runAction(action: () => Promise<void>) {
@@ -405,8 +435,17 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
     router.push(`/finance?month=${month}`);
   }
 
+  function focusQuickAdd(form: ActiveForm, clearEditing = false) {
+    setActiveForm(form);
+    if (clearEditing) setEditing(null);
+    setError(null);
+    window.requestAnimationFrame(() => {
+      quickAddRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   function editAccount(account: FinanceAccount) {
-    setActiveForm("account");
+    focusQuickAdd("account");
     setEditing({ kind: "account", id: account.id });
     setAccountForm({
       name: account.name,
@@ -418,7 +457,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
   }
 
   function editTransaction(transaction: FinanceTransaction) {
-    setActiveForm("transaction");
+    focusQuickAdd("transaction");
     setEditing({ kind: "transaction", id: transaction.id });
     setTransactionForm({
       accountId: transaction.accountId ?? "",
@@ -432,7 +471,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
   }
 
   function editBudget(budget: FinanceBudget) {
-    setActiveForm("budget");
+    focusQuickAdd("budget");
     setEditing({ kind: "budget", id: budget.id });
     setBudgetForm({
       category: budget.category,
@@ -441,7 +480,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
   }
 
   function editSavingsGoal(goal: FinanceSavingsGoal) {
-    setActiveForm("savings");
+    focusQuickAdd("savings");
     setEditing({ kind: "savings", id: goal.id });
     setSavingsForm({
       title: goal.title,
@@ -450,14 +489,10 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
     });
   }
 
-  function editSnapshot(snapshot: FinanceNetWorthSnapshot) {
-    setActiveForm("snapshot");
-    setEditing({ kind: "snapshot", id: snapshot.id });
-    setSnapshotForm({
-      date: inputDate(snapshot.date),
-      assets: String(snapshot.assets),
-      liabilities: String(snapshot.liabilities),
-    });
+  function startContribution(goalId: string) {
+    setContributingGoalId((current) => (current === goalId ? null : goalId));
+    setContributionForm(emptyContributionForm);
+    setContributionError(null);
   }
 
   function submitAccount(event: FormEvent<HTMLFormElement>) {
@@ -505,13 +540,17 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
     });
   }
 
-  function submitSnapshot(event: FormEvent<HTMLFormElement>) {
+  function submitContribution(event: FormEvent<HTMLFormElement>, goalId: string) {
     event.preventDefault();
-    runAction(async () => {
-      if (editing?.kind === "snapshot") {
-        await updateNetWorthSnapshot({ ...snapshotForm, id: editing.id });
-      } else {
-        await createNetWorthSnapshot(snapshotForm);
+    setContributionError(null);
+    startTransition(async () => {
+      try {
+        await contributeSavingsGoal({ id: goalId, amount: contributionForm.amount });
+        setContributingGoalId(null);
+        setContributionForm(emptyContributionForm);
+        router.refresh();
+      } catch (err) {
+        setContributionError(err instanceof Error ? err.message : "Something went wrong");
       }
     });
   }
@@ -549,10 +588,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
             </label>
             <button
               type="button"
-              onClick={() => {
-                setActiveForm("transaction");
-                setEditing(null);
-              }}
+              onClick={() => focusQuickAdd("transaction", true)}
               className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
             >
               <Plus className="h-4 w-4" />
@@ -579,7 +615,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
               </section>
 
               <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
-                <SectionHeader title="Account snapshot" subtitle="Active balances by account" />
+                <SectionHeader title="Account balances" subtitle="Active balances by account" />
                 {data.accounts.length === 0 ? (
                   <EmptyInline text="No accounts yet. Add checking, savings, credit, cash, investment, or loan balances." />
                 ) : (
@@ -813,8 +849,11 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
           </div>
 
           <aside className="space-y-5">
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
-              <div className="mb-4 flex items-center justify-between gap-3">
+            <section
+              ref={quickAddRef}
+              className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100"
+            >
+              <div className="mb-5 flex items-center justify-between gap-3">
                 <div>
                   <h2 className="text-base font-bold text-gray-900">Quick add</h2>
                   <p className="text-xs text-gray-500">
@@ -831,32 +870,47 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                   </button>
                 )}
               </div>
-              <div className="grid grid-cols-5 gap-1 rounded-xl bg-gray-100 p-1">
+              <div className="grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1.5">
                 {[
-                  { key: "transaction" as const, label: "Txn", icon: ReceiptText },
-                  { key: "account" as const, label: "Acct", icon: Banknote },
-                  { key: "budget" as const, label: "Budget", icon: Target },
-                  { key: "savings" as const, label: "Goal", icon: PiggyBank },
-                  { key: "snapshot" as const, label: "Worth", icon: LineChart },
-                ].map(({ key, label, icon: Icon }) => (
+                  {
+                    key: "transaction" as const,
+                    label: "Transaction",
+                    icon: ReceiptText,
+                    iconClass: "text-green-500",
+                  },
+                  {
+                    key: "account" as const,
+                    label: "Account",
+                    icon: Banknote,
+                    iconClass: "text-blue-500",
+                  },
+                  {
+                    key: "budget" as const,
+                    label: "Budget",
+                    icon: Target,
+                    iconClass: "text-amber-500",
+                  },
+                  {
+                    key: "savings" as const,
+                    label: "Savings Goal",
+                    icon: PiggyBank,
+                    iconClass: "text-pink-500",
+                  },
+                ].map(({ key, label, icon: Icon, iconClass }) => (
                   <button
                     key={key}
                     type="button"
                     title={label}
-                    onClick={() => {
-                      setActiveForm(key);
-                      setEditing(null);
-                      setError(null);
-                    }}
+                    onClick={() => focusQuickAdd(key, true)}
                     className={cn(
-                      "flex h-9 items-center justify-center gap-1 rounded-lg text-xs font-semibold transition",
+                      "flex h-10 items-center justify-center gap-1.5 rounded-lg text-xs font-semibold transition",
                       activeForm === key
                         ? "bg-white text-indigo-700 shadow-sm"
                         : "text-gray-500 hover:text-gray-900"
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />
-                    <span className="hidden min-[380px]:inline">{label}</span>
+                    <Icon className={cn("h-3.5 w-3.5", iconClass)} />
+                    <span>{label}</span>
                   </button>
                 ))}
               </div>
@@ -867,9 +921,9 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                 </div>
               )}
 
-              <div className="mt-4">
+              <div className="mt-5">
                 {activeForm === "transaction" && (
-                  <form onSubmit={submitTransaction} className="space-y-3">
+                  <form onSubmit={submitTransaction} className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       <Field label="Type">
                         <select
@@ -966,7 +1020,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                 )}
 
                 {activeForm === "account" && (
-                  <form onSubmit={submitAccount} className="space-y-3">
+                  <form onSubmit={submitAccount} className="space-y-4">
                     <Field label="Name">
                       <input
                         value={accountForm.name}
@@ -1020,7 +1074,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                 )}
 
                 {activeForm === "budget" && (
-                  <form onSubmit={submitBudget} className="space-y-3">
+                  <form onSubmit={submitBudget} className="space-y-4">
                     <Field label="Category">
                       <select
                         value={budgetForm.category}
@@ -1052,7 +1106,7 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                 )}
 
                 {activeForm === "savings" && (
-                  <form onSubmit={submitSavings} className="space-y-3">
+                  <form onSubmit={submitSavings} className="space-y-4">
                     <Field label="Goal">
                       <input
                         value={savingsForm.title}
@@ -1097,48 +1151,6 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                   </form>
                 )}
 
-                {activeForm === "snapshot" && (
-                  <form onSubmit={submitSnapshot} className="space-y-3">
-                    <Field label="Date">
-                      <input
-                        type="date"
-                        value={snapshotForm.date}
-                        onChange={(event) =>
-                          setSnapshotForm((form) => ({ ...form, date: event.target.value }))
-                        }
-                        className="finance-input"
-                      />
-                    </Field>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Assets">
-                        <input
-                          inputMode="decimal"
-                          value={snapshotForm.assets}
-                          onChange={(event) =>
-                            setSnapshotForm((form) => ({ ...form, assets: event.target.value }))
-                          }
-                          placeholder="0"
-                          className="finance-input"
-                        />
-                      </Field>
-                      <Field label="Liabilities">
-                        <input
-                          inputMode="decimal"
-                          value={snapshotForm.liabilities}
-                          onChange={(event) =>
-                            setSnapshotForm((form) => ({
-                              ...form,
-                              liabilities: event.target.value,
-                            }))
-                          }
-                          placeholder="0"
-                          className="finance-input"
-                        />
-                      </Field>
-                    </div>
-                    <SubmitRow pending={isPending} editing={editing?.kind === "snapshot"} />
-                  </form>
-                )}
               </div>
             </section>
 
@@ -1176,6 +1188,14 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                             <span className="text-sm font-bold text-green-600">{percent}%</span>
                             <button
                               type="button"
+                              title="Contribute to savings goal"
+                              onClick={() => startContribution(goal.id)}
+                              className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-50 hover:text-green-600"
+                            >
+                              <PlusCircle className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
                               title="Edit savings goal"
                               onClick={() => editSavingsGoal(goal)}
                               className="rounded-md p-1.5 text-gray-400 transition hover:bg-gray-50 hover:text-indigo-600"
@@ -1198,6 +1218,41 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
                             style={{ width: `${clampPercent(percent)}%` }}
                           />
                         </div>
+                        {contributingGoalId === goal.id && (
+                          <form
+                            onSubmit={(event) => submitContribution(event, goal.id)}
+                            className="mt-3 rounded-xl border border-green-100 bg-green-50/70 p-3"
+                          >
+                            <div className="flex items-end gap-2">
+                              <div className="min-w-0 flex-1">
+                                <Field label="Add funds">
+                                  <input
+                                    inputMode="decimal"
+                                    value={contributionForm.amount}
+                                    onChange={(event) =>
+                                      setContributionForm({ amount: event.target.value })
+                                    }
+                                    placeholder="0"
+                                    className="finance-input bg-white"
+                                  />
+                                </Field>
+                              </div>
+                              <button
+                                type="submit"
+                                disabled={isPending}
+                                className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-lg bg-green-600 px-3 text-sm font-semibold text-white transition hover:bg-green-700 disabled:opacity-60"
+                              >
+                                <PlusCircle className="h-4 w-4" />
+                                Add
+                              </button>
+                            </div>
+                            {contributionError && (
+                              <p className="mt-2 text-xs font-medium text-rose-600">
+                                {contributionError}
+                              </p>
+                            )}
+                          </form>
+                        )}
                       </div>
                     );
                   })}
@@ -1205,52 +1260,6 @@ export function FinanceDashboard({ data }: { data: FinanceDashboardData }) {
               )}
             </section>
 
-            <section className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-gray-100">
-              <SectionHeader title="Net worth snapshots" subtitle="Manual history for trend tracking" />
-              {data.netWorthSnapshots.length === 0 ? (
-                <EmptyInline text="No snapshots yet. Account balances still derive current net worth." />
-              ) : (
-                <div className="space-y-2">
-                  {data.netWorthSnapshots.slice(-5).reverse().map((snapshot) => (
-                    <div
-                      key={snapshot.id}
-                      className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3 py-2"
-                    >
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {formatCurrency(snapshot.netWorth)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(snapshot.date).toLocaleDateString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          })}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          title="Edit snapshot"
-                          onClick={() => editSnapshot(snapshot)}
-                          className="rounded-md p-1.5 text-gray-400 transition hover:bg-white hover:text-indigo-600"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          title="Delete snapshot"
-                          onClick={() => remove(() => deleteNetWorthSnapshot(snapshot.id))}
-                          className="rounded-md p-1.5 text-gray-400 transition hover:bg-white hover:text-rose-600"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
           </aside>
         </section>
       </div>

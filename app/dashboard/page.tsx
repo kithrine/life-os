@@ -13,6 +13,27 @@ import { HealthWidget } from "@/components/dashboard/health-widget";
 import { UpcomingWidget } from "@/components/dashboard/upcoming-widget";
 import { calculateGoalProgress } from "@/lib/goals";
 
+function finiteNumber(value: number | null | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function transactionKind(transaction: { amount: number; type: string | null }) {
+  const type = transaction.type?.trim().toLowerCase();
+  if (type === "expense" || type === "income" || type === "transfer" || type === "adjustment") {
+    return type;
+  }
+
+  const amount = finiteNumber(transaction.amount);
+  if (amount < 0) return "expense";
+  if (amount > 0) return "income";
+  return "adjustment";
+}
+
+function isLiabilityAccount(account: { type: string }) {
+  const type = account.type.trim().toLowerCase();
+  return type === "credit" || type === "loan";
+}
+
 export default async function DashboardPage() {
   const { userId: clerkUserId } = await auth();
   if (!clerkUserId) redirect("/");
@@ -43,7 +64,6 @@ export default async function DashboardPage() {
           },
         },
       },
-      netWorthSnapshots: { orderBy: { date: "desc" }, take: 1 },
       jobApplications: true,
       skills: { orderBy: { createdAt: "desc" }, take: 3 },
     },
@@ -67,18 +87,18 @@ export default async function DashboardPage() {
     ? {
         id: profile.savingsGoals[0].id,
         name: profile.savingsGoals[0].title,
-        currentAmount: Number(profile.savingsGoals[0].currentAmount),
-        targetAmount: Number(profile.savingsGoals[0].targetAmount),
+        currentAmount: Math.max(finiteNumber(profile.savingsGoals[0].currentAmount), 0),
+        targetAmount: Math.max(finiteNumber(profile.savingsGoals[0].targetAmount), 0),
       }
     : null;
 
   const monthlyTransactions = profile?.transactions ?? [];
   const monthlyIncome = monthlyTransactions
-    .filter((tx) => tx.type === "income" || tx.amount > 0)
-    .reduce((sum, tx) => sum + Math.max(tx.amount, 0), 0);
+    .filter((tx) => transactionKind(tx) === "income")
+    .reduce((sum, tx) => sum + Math.max(finiteNumber(tx.amount), 0), 0);
   const monthlySpending = monthlyTransactions
-    .filter((tx) => tx.type === "expense" || tx.amount < 0)
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    .filter((tx) => transactionKind(tx) === "expense")
+    .reduce((sum, tx) => sum + Math.abs(finiteNumber(tx.amount)), 0);
   const financeCashflow =
     monthlyTransactions.length > 0 ? monthlyIncome - monthlySpending : null;
   const financeSavingsRate =
@@ -88,21 +108,17 @@ export default async function DashboardPage() {
 
   const financialAccounts = profile?.financialAccounts ?? [];
   const derivedAssets = financialAccounts.reduce((sum, account) => {
-    if (account.type === "credit" || account.type === "loan") return sum;
-    return sum + Math.max(account.balance, 0);
+    if (isLiabilityAccount(account)) return sum;
+    return sum + Math.max(finiteNumber(account.balance), 0);
   }, 0);
   const derivedLiabilities = financialAccounts.reduce((sum, account) => {
-    if (account.type === "credit" || account.type === "loan") {
-      return sum + Math.abs(account.balance);
+    const balance = finiteNumber(account.balance);
+    if (isLiabilityAccount(account)) {
+      return sum + Math.abs(balance);
     }
-    return account.balance < 0 ? sum + Math.abs(account.balance) : sum;
+    return balance < 0 ? sum + Math.abs(balance) : sum;
   }, 0);
-  const latestNetWorthSnapshot = profile?.netWorthSnapshots[0];
-  const netWorth = latestNetWorthSnapshot
-    ? latestNetWorthSnapshot.netWorth
-    : financialAccounts.length > 0
-      ? derivedAssets - derivedLiabilities
-      : null;
+  const netWorth = financialAccounts.length > 0 ? derivedAssets - derivedLiabilities : null;
   const hasFinanceData =
     financialAccounts.length > 0 || monthlyTransactions.length > 0 || savingsGoal !== null;
 

@@ -24,7 +24,7 @@ export function FinanceWidget({
   savingsGoal: SavingsGoal | null;
   summary: FinanceSummary;
 }) {
-  const pct = savingsGoal
+  const pct = savingsGoal && savingsGoal.targetAmount > 0
     ? Math.round((savingsGoal.currentAmount / savingsGoal.targetAmount) * 100)
     : 0;
 

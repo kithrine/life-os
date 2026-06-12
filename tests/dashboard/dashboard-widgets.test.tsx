@@ -244,6 +244,11 @@ describe("FinanceWidget", () => {
     expect(screen.getByText("80%")).toBeTruthy();
   });
 
+  it("does not divide by zero for savings goals without a target", () => {
+    render(<FinanceWidget savingsGoal={{ ...goal, targetAmount: 0 }} summary={summary} />);
+    expect(screen.getByText("0%")).toBeTruthy();
+  });
+
   it("renders income, expenses, and cashflow rows", () => {
     render(<FinanceWidget savingsGoal={null} summary={summary} />);
     expect(screen.getByText("Monthly Income")).toBeTruthy();
