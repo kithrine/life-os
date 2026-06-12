@@ -7,11 +7,20 @@ export async function getHealthScore(): Promise<number> {
   const { userId } = await auth()
   if (!userId) throw new Error("Unauthorized")
 
-  const habits = await prisma.habit.findMany({ where: { userId } }) ?? []
+  // Health data is keyed by UserProfile.id, not the Clerk user id;
+  // no profile yet means no health data
+  const profile = await prisma.userProfile.findUnique({
+    where: { clerkUserId: userId },
+  })
+  if (!profile) return 0
+
+  const habits = await prisma.habit.findMany({ where: { userId: profile.id } }) ?? []
   const habitLogs = await prisma.habitLog.findMany({
-    where: { habit: { userId }, completed: true },
+    where: { habit: { userId: profile.id }, completed: true },
   }) ?? []
-  const moodEntries = await prisma.moodEntry.findMany({ where: { userId } }) ?? []
+  const moodEntries = await prisma.moodEntry.findMany({
+    where: { userId: profile.id },
+  }) ?? []
 
   if (!habits.length && !moodEntries.length) return 0
 

@@ -7,7 +7,12 @@ vi.mock("@clerk/nextjs/server", () => ({
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    userProfile: { findUnique: vi.fn() },
+    userProfile: {
+      findUnique: vi.fn().mockResolvedValue({
+        id: "profile-1",
+        clerkUserId: "test-user-id",
+      }),
+    },
     moodEntry: {
       create: vi.fn(),
       upsert: vi.fn(),
