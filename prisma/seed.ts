@@ -7,7 +7,9 @@ dotenv.config();
 import type { prisma as PrismaInstance } from "@/lib/prisma";
 type Db = typeof PrismaInstance;
 
-const DEMO_CLERK_USER_ID = "demo-seed-user";
+// Ties all seed data to a real Clerk account when SEED_CLERK_USER_ID is set
+// (e.g. in .env.local), so the demo user sees seeded data after a normal login.
+const DEMO_CLERK_USER_ID = process.env.SEED_CLERK_USER_ID ?? "demo-seed-user";
 
 const daysAgo = (n: number) => {
   const d = new Date();
