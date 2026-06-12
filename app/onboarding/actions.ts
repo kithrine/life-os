@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import {
   readOnboardingFormData,
   type OnboardingErrors,
+  type OnboardingValues,
   validateOnboardingValues,
 } from "./validation";
 
@@ -14,6 +15,35 @@ export type OnboardingActionResult = {
   errors?: OnboardingErrors;
   message?: string;
 };
+
+const SKIPPED_ONBOARDING_VALUE = "Skipped for now";
+const EMPTY_ADDITIONAL_INFORMATION = "No additional information provided.";
+
+function valuesForPersistence(values: OnboardingValues) {
+  return {
+    lifeStage: values.lifeStage,
+    currentSituation: values.currentSituation,
+    biggestChallenge: values.biggestChallenge,
+    careerGoals: values.careerGoals,
+    financialGoals: values.financialGoals,
+    healthGoals: values.healthGoals,
+    personalGrowthGoals: values.personalGrowthGoals,
+    futureVision: values.futureVision || EMPTY_ADDITIONAL_INFORMATION,
+  };
+}
+
+function skippedOnboardingValues() {
+  return {
+    lifeStage: SKIPPED_ONBOARDING_VALUE,
+    currentSituation: SKIPPED_ONBOARDING_VALUE,
+    biggestChallenge: SKIPPED_ONBOARDING_VALUE,
+    careerGoals: SKIPPED_ONBOARDING_VALUE,
+    financialGoals: SKIPPED_ONBOARDING_VALUE,
+    healthGoals: SKIPPED_ONBOARDING_VALUE,
+    personalGrowthGoals: SKIPPED_ONBOARDING_VALUE,
+    futureVision: EMPTY_ADDITIONAL_INFORMATION,
+  };
+}
 
 export async function completeOnboarding(formData: FormData): Promise<OnboardingActionResult> {
   const { userId } = await auth();
@@ -25,7 +55,10 @@ export async function completeOnboarding(formData: FormData): Promise<Onboarding
     };
   }
 
-  const values = readOnboardingFormData(formData);
+  const shouldSkip = formData.get("onboardingIntent") === "skip";
+  const values = shouldSkip
+    ? skippedOnboardingValues()
+    : valuesForPersistence(readOnboardingFormData(formData));
   const errors = validateOnboardingValues(values);
 
   if (Object.keys(errors).length > 0) {

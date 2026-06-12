@@ -27,14 +27,20 @@ const mockUpsert = prisma.userProfile.upsert as unknown as ReturnType<typeof vi.
 function validOnboardingFormData() {
   const formData = new FormData();
 
-  formData.set("lifeStage", "early-career");
-  formData.set("currentSituation", "Building a new personal system.");
-  formData.set("biggestChallenge", "Staying consistent across priorities.");
-  formData.set("careerGoals", "Grow into a product leadership role.");
-  formData.set("financialGoals", "Build a stronger emergency fund.");
-  formData.set("healthGoals", "Improve sleep and training consistency.");
-  formData.set("personalGrowthGoals", "Read, reflect, and communicate better.");
-  formData.set("futureVision", "Create a calmer and more intentional life.");
+  formData.set("lifeStage", "Career transition");
+  formData.append("currentSituation", "I need more structure");
+  formData.append("currentSituation", "I want better habits");
+  formData.append("biggestChallenge", "Staying consistent");
+  formData.append("biggestChallenge", "Too many priorities");
+  formData.append("careerGoals", "Build skills");
+  formData.append("careerGoals", "Change careers");
+  formData.append("financialGoals", "Save money");
+  formData.append("financialGoals", "Budget better");
+  formData.append("healthGoals", "Move more");
+  formData.append("healthGoals", "Sleep better");
+  formData.append("personalGrowthGoals", "Build confidence");
+  formData.append("personalGrowthGoals", "Stay accountable");
+  formData.set("futureVision", "Please remember that I prefer simple next steps.");
 
   return formData;
 }
@@ -72,24 +78,63 @@ describe("completeOnboarding save and redirect", () => {
       where: { clerkUserId: "user_123" },
       create: expect.objectContaining({
         clerkUserId: "user_123",
-        lifeStage: "early-career",
-        currentSituation: "Building a new personal system.",
-        biggestChallenge: "Staying consistent across priorities.",
-        careerGoals: "Grow into a product leadership role.",
-        financialGoals: "Build a stronger emergency fund.",
-        healthGoals: "Improve sleep and training consistency.",
-        personalGrowthGoals: "Read, reflect, and communicate better.",
-        futureVision: "Create a calmer and more intentional life.",
+        lifeStage: "Career transition",
+        currentSituation: "I need more structure, I want better habits",
+        biggestChallenge: "Staying consistent, Too many priorities",
+        careerGoals: "Build skills, Change careers",
+        financialGoals: "Save money, Budget better",
+        healthGoals: "Move more, Sleep better",
+        personalGrowthGoals: "Build confidence, Stay accountable",
+        futureVision: "Please remember that I prefer simple next steps.",
       }),
       update: expect.objectContaining({
-        lifeStage: "early-career",
-        currentSituation: "Building a new personal system.",
-        biggestChallenge: "Staying consistent across priorities.",
-        careerGoals: "Grow into a product leadership role.",
-        financialGoals: "Build a stronger emergency fund.",
-        healthGoals: "Improve sleep and training consistency.",
-        personalGrowthGoals: "Read, reflect, and communicate better.",
-        futureVision: "Create a calmer and more intentional life.",
+        lifeStage: "Career transition",
+        currentSituation: "I need more structure, I want better habits",
+        biggestChallenge: "Staying consistent, Too many priorities",
+        careerGoals: "Build skills, Change careers",
+        financialGoals: "Save money, Budget better",
+        healthGoals: "Move more, Sleep better",
+        personalGrowthGoals: "Build confidence, Stay accountable",
+        futureVision: "Please remember that I prefer simple next steps.",
+      }),
+    });
+    expect(mockRedirect).toHaveBeenCalledWith("/blueprint");
+  });
+
+  it("allows users to skip onboarding and continue through the existing redirect", async () => {
+    const formData = new FormData();
+    formData.set("onboardingIntent", "skip");
+
+    mockAuth.mockResolvedValueOnce({ userId: "user_123" });
+    mockUpsert.mockResolvedValueOnce({ id: "profile_123" });
+    mockRedirect.mockImplementationOnce((path: string) => {
+      throw new Error(`NEXT_REDIRECT:${path}`);
+    });
+
+    await expect(completeOnboarding(formData)).rejects.toThrow("NEXT_REDIRECT:/blueprint");
+
+    expect(mockUpsert).toHaveBeenCalledWith({
+      where: { clerkUserId: "user_123" },
+      create: expect.objectContaining({
+        clerkUserId: "user_123",
+        lifeStage: "Skipped for now",
+        currentSituation: "Skipped for now",
+        biggestChallenge: "Skipped for now",
+        careerGoals: "Skipped for now",
+        financialGoals: "Skipped for now",
+        healthGoals: "Skipped for now",
+        personalGrowthGoals: "Skipped for now",
+        futureVision: "No additional information provided.",
+      }),
+      update: expect.objectContaining({
+        lifeStage: "Skipped for now",
+        currentSituation: "Skipped for now",
+        biggestChallenge: "Skipped for now",
+        careerGoals: "Skipped for now",
+        financialGoals: "Skipped for now",
+        healthGoals: "Skipped for now",
+        personalGrowthGoals: "Skipped for now",
+        futureVision: "No additional information provided.",
       }),
     });
     expect(mockRedirect).toHaveBeenCalledWith("/blueprint");
