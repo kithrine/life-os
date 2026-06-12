@@ -2,6 +2,16 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
+import type { prisma as PrismaInstance } from "@/lib/prisma";
+
+const DEMO_CLERK_ID = "demo-user-seed";
+
+// Usage: npx tsx prisma/seed-health.ts [clerkUserId ...]
+// With no arguments, seeds the synthetic demo user
+const targets = process.argv.slice(2).length
+  ? process.argv.slice(2)
+  : [DEMO_CLERK_ID];
+
 // Midnight-normalized dates so HabitLog/MoodEntry unique constraints
 // ([habitId, date] / [userId, date]) make reruns idempotent
 function daysAgo(n: number): Date {
@@ -11,45 +21,40 @@ function daysAgo(n: number): Date {
   return d;
 }
 
-async function main() {
-  // The shared client reads DATABASE_URL at import time, so this import
-  // must stay dynamic — after dotenv has populated the env above
-  const { prisma } = await import("@/lib/prisma");
-
-  console.log("Seeding health feature demo data...");
-
+async function seedHealthFor(prisma: typeof PrismaInstance, clerkUserId: string) {
+  const isDemo = clerkUserId === DEMO_CLERK_ID;
   const user = await prisma.userProfile.upsert({
-    where: { clerkUserId: "demo-user-seed" },
-    update: { name: "Demo User" },
-    create: { clerkUserId: "demo-user-seed", name: "Demo User" },
+    where: { clerkUserId },
+    update: isDemo ? { name: "Demo User" } : {},
+    create: { clerkUserId, name: isDemo ? "Demo User" : null },
   });
 
-  // Habit has no unique constraint besides id, so deterministic ids
-  // keep the upserts idempotent across runs
+  // Habit has no unique constraint besides id, so deterministic
+  // per-profile ids keep the upserts idempotent across runs
   const habits = [
     {
-      id: "seed-habit-morning-run",
+      slug: "morning-run",
       title: "Morning Run",
       streak: 7,
       lastCompleted: daysAgo(0),
       logDays: [0, 1, 2, 3, 4, 5, 6],
     },
     {
-      id: "seed-habit-read-20-minutes",
+      slug: "read-20-minutes",
       title: "Read 20 Minutes",
       streak: 3,
       lastCompleted: daysAgo(0),
       logDays: [0, 1, 2],
     },
     {
-      id: "seed-habit-drink-water",
+      slug: "drink-water",
       title: "Drink Water",
       streak: 0,
       lastCompleted: daysAgo(3),
       logDays: [3, 4, 5],
     },
     {
-      id: "seed-habit-evening-stretch",
+      slug: "evening-stretch",
       title: "Evening Stretch",
       streak: 0,
       lastCompleted: null,
@@ -58,15 +63,16 @@ async function main() {
   ];
 
   for (const habit of habits) {
+    const habitId = `seed-${habit.slug}-${user.id}`;
     await prisma.habit.upsert({
-      where: { id: habit.id },
+      where: { id: habitId },
       update: {
         title: habit.title,
         streak: habit.streak,
         lastCompleted: habit.lastCompleted,
       },
       create: {
-        id: habit.id,
+        id: habitId,
         userId: user.id,
         title: habit.title,
         streak: habit.streak,
@@ -76,9 +82,9 @@ async function main() {
 
     for (const day of habit.logDays) {
       await prisma.habitLog.upsert({
-        where: { habitId_date: { habitId: habit.id, date: daysAgo(day) } },
+        where: { habitId_date: { habitId, date: daysAgo(day) } },
         update: { completed: true },
-        create: { habitId: habit.id, date: daysAgo(day), completed: true },
+        create: { habitId, date: daysAgo(day), completed: true },
       });
     }
   }
@@ -100,8 +106,34 @@ async function main() {
   });
   const moodCount = await prisma.moodEntry.count({ where: { userId: user.id } });
   console.log(
-    `Done. Demo User seeded with ${habitCount} habits, ${logCount} habit logs, ${moodCount} mood entries.`
+    `  ${clerkUserId}: ${habitCount} habits, ${logCount} habit logs, ${moodCount} mood entries.`
   );
+}
+
+async function main() {
+  // The shared client reads DATABASE_URL at import time, so this import
+  // must stay dynamic — after dotenv has populated the env above
+  const { prisma } = await import("@/lib/prisma");
+
+  // Remove seed habits from before ids were per-profile (cascades to logs)
+  await prisma.habit.deleteMany({
+    where: {
+      id: {
+        in: [
+          "seed-habit-morning-run",
+          "seed-habit-read-20-minutes",
+          "seed-habit-drink-water",
+          "seed-habit-evening-stretch",
+        ],
+      },
+    },
+  });
+
+  console.log("Seeding health feature demo data...");
+  for (const clerkUserId of targets) {
+    await seedHealthFor(prisma, clerkUserId);
+  }
+  console.log("Done.");
 
   await prisma.$disconnect();
 }
