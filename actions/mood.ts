@@ -29,6 +29,18 @@ export async function logMood(mood: number, note?: string): Promise<void> {
   revalidatePath("/dashboard")
 }
 
+export async function deleteMoodEntry(entryId: string): Promise<void> {
+  const profileId = await requireProfileId()
+  const entry = await prisma.moodEntry.findFirst({
+    where: { id: entryId, userId: profileId },
+  })
+  if (!entry) throw new Error("Mood entry not found")
+
+  await prisma.moodEntry.delete({ where: { id: entryId } })
+  revalidatePath("/health")
+  revalidatePath("/dashboard")
+}
+
 export async function getMoodHistory() {
   const profileId = await requireProfileId()
   return await prisma.moodEntry.findMany({

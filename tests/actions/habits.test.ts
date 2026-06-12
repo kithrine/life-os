@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { createHabit, completeHabit, deleteHabit } from "@/actions/habits"
+import { createHabit, completeHabit, deleteHabit, updateHabit } from "@/actions/habits"
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "test-user-id" }),
@@ -56,5 +56,13 @@ describe("habits actions", () => {
 
   it("should delete a habit", async () => {
     await expect(deleteHabit("habit-1")).resolves.not.toThrow()
+  })
+
+  it("should rename a habit", async () => {
+    await expect(updateHabit("habit-1", "Morning walk")).resolves.not.toThrow()
+  })
+
+  it("should reject renaming a habit to an empty title", async () => {
+    await expect(updateHabit("habit-1", "   ")).rejects.toThrow("Habit title is required")
   })
 })

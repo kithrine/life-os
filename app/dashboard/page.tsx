@@ -11,6 +11,7 @@ import { CareerOverviewWidget } from "@/components/dashboard/career-overview-wid
 import { FinanceWidget } from "@/components/dashboard/finance-widget";
 import { HealthWidget } from "@/components/dashboard/health-widget";
 import { UpcomingWidget } from "@/components/dashboard/upcoming-widget";
+import { calculateGoalProgress } from "@/lib/goals";
 
 function finiteNumber(value: number | null | undefined): number {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
@@ -47,7 +48,11 @@ export default async function DashboardPage() {
   const profile = await prisma.userProfile.findUnique({
     where: { clerkUserId },
     include: {
-      goals: { orderBy: { createdAt: "desc" }, take: 3 },
+      goals: {
+        orderBy: { createdAt: "desc" },
+        take: 3,
+        include: { milestones: { select: { completed: true } } },
+      },
       habits: { orderBy: { streak: "desc" }, take: 4 },
       savingsGoals: { orderBy: { createdAt: "asc" }, take: 1 },
       financialAccounts: { where: { isArchived: false } },
@@ -67,7 +72,7 @@ export default async function DashboardPage() {
   const goals = (profile?.goals ?? []).map((g) => ({
     id: g.id,
     title: g.title,
-    progress: g.progress,
+    progress: calculateGoalProgress(g.milestones),
     category: g.category ?? "personal",
   }));
 
@@ -125,17 +130,17 @@ export default async function DashboardPage() {
       {/* Page content — sits on top of (and below) the hero */}
       <div className="relative z-10 px-4 pb-12 sm:px-6 lg:px-8">
         {/* Greeting overlaid on hero */}
-        <div className="pt-12 pb-6 sm:pt-16">
-          <h1 className="text-2xl font-extrabold text-white drop-shadow sm:text-3xl">
-            {greeting}, {firstName}! 👋
+        <div className="pt-6 pb-6 sm:pt-8">
+          <h1 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
+            Hello, there!
           </h1>
-          <p className="mt-1 text-sm text-white/80 drop-shadow">
+          <p className="mt-1 text-sm text-gray-600">
             Here&apos;s how your life is looking today.
           </p>
         </div>
 
         {/* Life Score + Stats */}
-        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="mt-2 flex flex-col gap-4 lg:flex-row lg:items-end">
           <div className="shrink-0 lg:w-64">
             <LifeScoreCard />
           </div>

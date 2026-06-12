@@ -121,7 +121,7 @@ export function LoginForm() {
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
       <div className="mb-6 text-center">
-        <h2 className="text-xl font-bold text-gray-900">Welcome back 👋</h2>
+        <h2 className="text-xl font-bold text-gray-900">Welcome back</h2>
         <p className="text-sm text-gray-500 mt-1">Log in to continue your journey.</p>
       </div>
 

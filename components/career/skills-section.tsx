@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus } from "lucide-react";
+import { Code2, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addSkill, deleteSkill } from "@/actions/career";
 
@@ -12,10 +12,10 @@ type Skill = {
   level: string;
 };
 
-const LEVEL_STYLES: Record<string, string> = {
-  beginner: "bg-green-100 text-green-800",
-  intermediate: "bg-yellow-100 text-yellow-800",
-  advanced: "bg-red-100 text-red-800",
+const LEVEL_DOT: Record<string, string> = {
+  beginner: "bg-green-400",
+  intermediate: "bg-yellow-400",
+  advanced: "bg-indigo-500",
 };
 
 export function SkillsSection({ initialSkills }: { initialSkills: Skill[] }) {
@@ -49,25 +49,32 @@ export function SkillsSection({ initialSkills }: { initialSkills: Skill[] }) {
   }
 
   return (
-    <section>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Skills</h2>
+    <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+      {/* Section header */}
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
+            <Code2 className="h-4 w-4 text-indigo-600" />
+          </div>
+          <h2 className="text-base font-semibold text-gray-900">Skills</h2>
+        </div>
         {!showForm && (
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
             Add Skill
           </button>
         )}
       </div>
 
+      {/* Add form */}
       {showForm && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+        <div className="mb-5 space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
           <div>
-            <label htmlFor="skill-name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="skill-name" className="mb-1 block text-sm font-medium text-gray-700">
               Skill name
             </label>
             <input
@@ -77,15 +84,15 @@ export function SkillsSection({ initialSkills }: { initialSkills: Skill[] }) {
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. TypeScript"
               className={cn(
-                "w-full px-3 py-2 rounded-lg border text-sm outline-none",
-                "focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition",
+                "w-full rounded-lg border px-3 py-2 text-sm outline-none transition",
+                "focus:border-transparent focus:ring-2 focus:ring-indigo-500",
                 nameError ? "border-red-400" : "border-gray-300"
               )}
             />
-            {nameError && <p className="text-xs text-red-500 mt-1">{nameError}</p>}
+            {nameError && <p className="mt-1 text-xs text-red-500">{nameError}</p>}
           </div>
           <div>
-            <label htmlFor="skill-level" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="skill-level" className="mb-1 block text-sm font-medium text-gray-700">
               Level
             </label>
             <select
@@ -93,7 +100,7 @@ export function SkillsSection({ initialSkills }: { initialSkills: Skill[] }) {
               aria-label="Level"
               value={level}
               onChange={(e) => setLevel(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-indigo-500 transition"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-indigo-500"
             >
               <option value="beginner">Beginner</option>
               <option value="intermediate">Intermediate</option>
@@ -105,14 +112,14 @@ export function SkillsSection({ initialSkills }: { initialSkills: Skill[] }) {
               type="button"
               onClick={handleAdd}
               disabled={isPending}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
             >
               Save
             </button>
             <button
               type="button"
               onClick={() => { setShowForm(false); setNameError(""); setName(""); }}
-              className="px-4 py-2 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -120,23 +127,35 @@ export function SkillsSection({ initialSkills }: { initialSkills: Skill[] }) {
         </div>
       )}
 
+      {/* Skills grid or empty state */}
       {initialSkills.length === 0 && !showForm ? (
-        <p className="text-sm text-gray-400 italic">No skills added yet</p>
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <Code2 className="h-8 w-8 text-gray-200" />
+          <p className="text-sm text-gray-400">No skills added yet</p>
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="text-sm font-medium text-indigo-600 hover:underline"
+          >
+            Add your first skill
+          </button>
+        </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {initialSkills.map((skill) => (
             <div
               key={skill.id}
-              className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 shadow-sm"
+              className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 p-3 transition hover:bg-white"
             >
-              <div>
-                <p className="text-sm font-medium text-gray-800">{skill.name}</p>
-                <span
-                  className={cn(
-                    "text-xs font-medium px-2 py-0.5 rounded-full capitalize",
-                    LEVEL_STYLES[skill.level] ?? "bg-gray-100 text-gray-600"
-                  )}
-                >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-gray-800">{skill.name}</p>
+                <span className="mt-1 flex items-center gap-1.5 text-xs text-gray-500 capitalize">
+                  <span
+                    className={cn(
+                      "inline-block h-2 w-2 rounded-full",
+                      LEVEL_DOT[skill.level] ?? "bg-gray-400"
+                    )}
+                  />
                   {skill.level}
                 </span>
               </div>
@@ -144,14 +163,14 @@ export function SkillsSection({ initialSkills }: { initialSkills: Skill[] }) {
                 type="button"
                 aria-label="Delete skill"
                 onClick={() => handleDelete(skill.id)}
-                className="text-gray-400 hover:text-red-500 transition ml-2"
+                className="ml-2 shrink-0 text-gray-400 transition hover:text-red-500"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="h-4 w-4" />
               </button>
             </div>
           ))}
         </div>
       )}
-    </section>
+    </div>
   );
 }

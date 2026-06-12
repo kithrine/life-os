@@ -26,7 +26,7 @@ export default async function HomePage() {
         {/* Logo + tagline */}
         <div className="flex items-center gap-2 mb-1">
           <LifeOSLogo size={40} />
-          <span className="text-2xl font-bold text-gray-900 tracking-tight">LifeOS</span>
+          <span className="text-5xl font-bold text-gray-900 tracking-tight">LifeOS</span>
         </div>
         <p className="text-sm text-gray-500 mb-8">Your life. Optimized.</p>
 

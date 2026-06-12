@@ -77,11 +77,9 @@ describe("GoalsWidget", () => {
     expect(screen.getByRole("link", { name: /view all/i })).toBeTruthy();
   });
 
-  it("shows placeholder goals when no goals are passed", () => {
+  it("shows an empty state when no goals are passed", () => {
     render(<GoalsWidget goals={[]} />);
-    expect(screen.getByText("Save $10,000")).toBeTruthy();
-    expect(screen.getByText("Run a Half Marathon")).toBeTruthy();
-    expect(screen.getByText("Read 24 Books")).toBeTruthy();
+    expect(screen.getByText(/no goals yet/i)).toBeTruthy();
   });
 
   it("shows real goals when provided", () => {
@@ -93,6 +91,7 @@ describe("GoalsWidget", () => {
   it("does not show placeholders when real goals exist", () => {
     render(<GoalsWidget goals={realGoals} />);
     expect(screen.queryByText("Save $10,000")).toBeNull();
+    expect(screen.queryByText(/no goals yet/i)).toBeNull();
   });
 
   it("displays progress percentages", () => {

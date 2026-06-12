@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, Plus } from "lucide-react";
+import { Briefcase, Plus, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { addJobApplication, updateJobStatus, deleteJobApplication } from "@/actions/career";
 
@@ -38,18 +38,10 @@ export function JobApplicationsSection({
 
   function handleAdd() {
     let valid = true;
-    if (!company.trim()) {
-      setCompanyError("Company is required");
-      valid = false;
-    } else {
-      setCompanyError("");
-    }
-    if (!role.trim()) {
-      setRoleError("Role is required");
-      valid = false;
-    } else {
-      setRoleError("");
-    }
+    if (!company.trim()) { setCompanyError("Company is required"); valid = false; }
+    else setCompanyError("");
+    if (!role.trim()) { setRoleError("Role is required"); valid = false; }
+    else setRoleError("");
     if (!valid) return;
 
     startTransition(async () => {
@@ -76,25 +68,32 @@ export function JobApplicationsSection({
   }
 
   return (
-    <section>
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Job Applications</h2>
+    <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200">
+      {/* Section header */}
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50">
+            <Briefcase className="h-4 w-4 text-indigo-600" />
+          </div>
+          <h2 className="text-base font-semibold text-gray-900">Job Applications</h2>
+        </div>
         {!showForm && (
           <button
             type="button"
             onClick={() => setShowForm(true)}
-            className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+            className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="h-4 w-4" />
             Add Application
           </button>
         )}
       </div>
 
+      {/* Add form */}
       {showForm && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+        <div className="mb-5 space-y-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
           <div>
-            <label htmlFor="app-company" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="app-company" className="mb-1 block text-sm font-medium text-gray-700">
               Company
             </label>
             <input
@@ -104,15 +103,15 @@ export function JobApplicationsSection({
               onChange={(e) => setCompany(e.target.value)}
               placeholder="e.g. Acme Corp"
               className={cn(
-                "w-full px-3 py-2 rounded-lg border text-sm outline-none",
-                "focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition",
+                "w-full rounded-lg border px-3 py-2 text-sm outline-none transition",
+                "focus:border-transparent focus:ring-2 focus:ring-indigo-500",
                 companyError ? "border-red-400" : "border-gray-300"
               )}
             />
-            {companyError && <p className="text-xs text-red-500 mt-1">{companyError}</p>}
+            {companyError && <p className="mt-1 text-xs text-red-500">{companyError}</p>}
           </div>
           <div>
-            <label htmlFor="app-role" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="app-role" className="mb-1 block text-sm font-medium text-gray-700">
               Role
             </label>
             <input
@@ -122,26 +121,26 @@ export function JobApplicationsSection({
               onChange={(e) => setRole(e.target.value)}
               placeholder="e.g. Frontend Engineer"
               className={cn(
-                "w-full px-3 py-2 rounded-lg border text-sm outline-none",
-                "focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition",
+                "w-full rounded-lg border px-3 py-2 text-sm outline-none transition",
+                "focus:border-transparent focus:ring-2 focus:ring-indigo-500",
                 roleError ? "border-red-400" : "border-gray-300"
               )}
             />
-            {roleError && <p className="text-xs text-red-500 mt-1">{roleError}</p>}
+            {roleError && <p className="mt-1 text-xs text-red-500">{roleError}</p>}
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={handleAdd}
               disabled={isPending}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700 disabled:opacity-60"
             >
               Save
             </button>
             <button
               type="button"
               onClick={() => { setShowForm(false); setCompanyError(""); setRoleError(""); setCompany(""); setRole(""); }}
-              className="px-4 py-2 text-gray-600 text-sm font-medium rounded-lg hover:bg-gray-100 transition"
+              className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
             >
               Cancel
             </button>
@@ -149,12 +148,23 @@ export function JobApplicationsSection({
         </div>
       )}
 
+      {/* Table or empty state */}
       {initialApplications.length === 0 && !showForm ? (
-        <p className="text-sm text-gray-400 italic">No applications yet</p>
+        <div className="flex flex-col items-center gap-2 py-10 text-center">
+          <Briefcase className="h-8 w-8 text-gray-200" />
+          <p className="text-sm text-gray-400">No applications yet</p>
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="text-sm font-medium text-indigo-600 hover:underline"
+          >
+            Track your first application
+          </button>
+        </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200">
+        <div className="overflow-x-auto rounded-xl border border-gray-200">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <thead className="border-b border-gray-200 bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
               <tr>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Role</th>
@@ -165,8 +175,8 @@ export function JobApplicationsSection({
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
               {initialApplications.map((app) => (
-                <tr key={app.id}>
-                  <td className="px-4 py-3 font-medium text-gray-800">{app.company}</td>
+                <tr key={app.id} className="transition hover:bg-gray-50">
+                  <td className="px-4 py-3 font-medium text-gray-900">{app.company}</td>
                   <td className="px-4 py-3 text-gray-600">{app.role}</td>
                   <td className="px-4 py-3">
                     <select
@@ -174,7 +184,7 @@ export function JobApplicationsSection({
                       value={app.status}
                       onChange={(e) => handleStatusChange(app.id, e.target.value)}
                       className={cn(
-                        "text-xs font-medium px-2 py-1 rounded-full border-0 outline-none cursor-pointer",
+                        "cursor-pointer rounded-full border-0 px-2 py-1 text-xs font-semibold outline-none",
                         STATUS_STYLES[app.status] ?? "bg-gray-100 text-gray-600"
                       )}
                     >
@@ -186,16 +196,20 @@ export function JobApplicationsSection({
                     </select>
                   </td>
                   <td className="px-4 py-3 text-gray-500">
-                    {new Date(app.createdAt).toLocaleDateString()}
+                    {new Date(app.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </td>
                   <td className="px-4 py-3">
                     <button
                       type="button"
                       aria-label="Delete application"
                       onClick={() => handleDelete(app.id)}
-                      className="text-gray-400 hover:text-red-500 transition"
+                      className="text-gray-400 transition hover:text-red-500"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </td>
                 </tr>
@@ -204,6 +218,6 @@ export function JobApplicationsSection({
           </table>
         </div>
       )}
-    </section>
+    </div>
   );
 }

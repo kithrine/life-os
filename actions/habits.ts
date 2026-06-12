@@ -47,6 +47,23 @@ export async function completeHabit(habitId: string): Promise<void> {
   revalidatePath("/dashboard")
 }
 
+export async function updateHabit(habitId: string, title: string): Promise<void> {
+  const profileId = await requireProfileId()
+  const trimmedTitle = title.trim()
+  if (!trimmedTitle) throw new Error("Habit title is required")
+  const habit = await prisma.habit.findFirst({
+    where: { id: habitId, userId: profileId },
+  })
+  if (!habit) throw new Error("Habit not found")
+
+  await prisma.habit.update({
+    where: { id: habitId },
+    data: { title: trimmedTitle },
+  })
+  revalidatePath("/health")
+  revalidatePath("/dashboard")
+}
+
 export async function deleteHabit(habitId: string): Promise<void> {
   const profileId = await requireProfileId()
   const habit = await prisma.habit.findFirst({

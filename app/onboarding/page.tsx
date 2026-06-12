@@ -25,13 +25,13 @@ export default async function OnboardingPage() {
 
         <section className="rounded-2xl bg-white p-6 shadow-xl sm:p-8">
           <div className="mb-8">
-            <p className="mb-2 text-sm font-medium text-indigo-600">Onboarding assessment</p>
+            <p className="mb-2 text-sm font-medium text-indigo-600">Quick setup</p>
             <h1 className="text-3xl leading-tight font-extrabold text-gray-900 sm:text-4xl">
-              Build your personal operating system
+              Tell LifeOS what to focus on
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-gray-600 sm:text-base">
-              Share the essentials so LifeOS can tailor your first blueprint around the parts of
-              life you want to improve.
+              Pick a few lightweight signals so LifeOS can tailor your first blueprint and future
+              AI Coach context without turning setup into homework.
             </p>
           </div>
 

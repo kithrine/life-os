@@ -30,21 +30,24 @@ vi.mock("@/app/onboarding/actions", () => ({
 }));
 
 describe("OnboardingPage", () => {
-  it("renders all required onboarding fields", async () => {
+  it("renders selectable onboarding sections", async () => {
     render(await OnboardingPage());
 
-    expect(screen.getByLabelText(/life stage/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/current situation/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/biggest challenge/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/career goals/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/financial goals/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/health goals/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/personal growth goals/i)).toBeInTheDocument();
+    expect(screen.getByText(/life stage/i)).toBeInTheDocument();
+    expect(screen.getByText(/current situation/i)).toBeInTheDocument();
+    expect(screen.getByText(/biggest challenge/i)).toBeInTheDocument();
+    expect(screen.getByText(/career goals/i)).toBeInTheDocument();
+    expect(screen.getByText(/financial goals/i)).toBeInTheDocument();
+    expect(screen.getByText(/health goals/i)).toBeInTheDocument();
+    expect(screen.getByText(/personal growth goals/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /skip for now/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /continue/i })).toBeInTheDocument();
   });
 
-  it("renders optional additional context", async () => {
+  it("renders optional additional information as the only textbox", async () => {
     render(await OnboardingPage());
 
-    expect(screen.getByLabelText(/additional context/i)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /additional information/i })).toBeInTheDocument();
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
   });
 });
