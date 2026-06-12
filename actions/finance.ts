@@ -50,11 +50,9 @@ type SavingsGoalInput = {
   currentAmount: number | string;
 };
 
-type NetWorthSnapshotInput = {
-  id?: string;
-  date: string;
-  assets: number | string;
-  liabilities: number | string;
+type SavingsGoalContributionInput = {
+  id: string;
+  amount: number | string;
 };
 
 async function requireProfileId(): Promise<string> {
@@ -99,10 +97,17 @@ function positiveMoney(value: number | string, field: string): number {
   return parsed;
 }
 
+function contributionMoney(value: number | string, field: string): number {
+  const parsed = positiveMoney(value, field);
+  if (parsed <= 0) throw new Error(`${field} must be greater than zero`);
+  return parsed;
+}
+
 function signedTransactionAmount(value: number | string, type: string): number {
   const parsed = Math.abs(money(value, "Amount"));
-  if (type === "expense") return -parsed;
-  if (type === "income") return parsed;
+  const normalizedType = type.trim().toLowerCase();
+  if (normalizedType === "expense") return -parsed;
+  if (normalizedType === "income") return parsed;
   return money(value, "Amount");
 }
 
@@ -139,24 +144,53 @@ function monthLabel(value: Date): string {
   return value.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
+function finiteNumber(value: number | null | undefined): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function finitePercent(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value);
+}
+
+function normalizedCategory(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function transactionKind(transaction: { amount: number; type: string | null }) {
+  const type = transaction.type?.trim().toLowerCase();
+  if (type === "expense" || type === "income" || type === "transfer" || type === "adjustment") {
+    return type;
+  }
+
+  const amount = finiteNumber(transaction.amount);
+  if (amount < 0) return "expense";
+  if (amount > 0) return "income";
+  return "adjustment";
+}
+
 function isExpense(transaction: { amount: number; type: string }) {
-  return transaction.type === "expense" || transaction.amount < 0;
+  return transactionKind(transaction) === "expense";
 }
 
 function isIncome(transaction: { amount: number; type: string }) {
-  return transaction.type === "income" || transaction.amount > 0;
+  return transactionKind(transaction) === "income";
 }
 
 function accountLiability(account: { type: string; balance: number }) {
   const liabilityTypes = new Set(["credit", "loan"]);
-  if (liabilityTypes.has(account.type)) return Math.abs(account.balance);
-  return account.balance < 0 ? Math.abs(account.balance) : 0;
+  const type = account.type.trim().toLowerCase();
+  const balance = finiteNumber(account.balance);
+  if (liabilityTypes.has(type)) return Math.abs(balance);
+  return balance < 0 ? Math.abs(balance) : 0;
 }
 
 function accountAsset(account: { type: string; balance: number }) {
   const liabilityTypes = new Set(["credit", "loan"]);
-  if (liabilityTypes.has(account.type)) return 0;
-  return account.balance > 0 ? account.balance : 0;
+  const type = account.type.trim().toLowerCase();
+  if (liabilityTypes.has(type)) return 0;
+  const balance = finiteNumber(account.balance);
+  return balance > 0 ? balance : 0;
 }
 
 function buildInsight({
@@ -236,7 +270,6 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
     recentTransactions,
     budgets,
     savingsGoals,
-    snapshots,
     seriesTransactions,
   ] = await Promise.all([
     prisma.financialAccount.findMany({
@@ -265,11 +298,6 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
       where: { userId: profileId },
       orderBy: { createdAt: "asc" },
     }),
-    prisma.netWorthSnapshot.findMany({
-      where: { userId: profileId },
-      orderBy: { date: "asc" },
-      take: 12,
-    }),
     prisma.transaction.findMany({
       where: {
         userId: profileId,
@@ -281,14 +309,21 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
 
   const expenses = monthTransactions.filter(isExpense);
   const incomeTransactions = monthTransactions.filter(isIncome);
-  const monthlySpending = expenses.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-  const monthlyIncome = incomeTransactions.reduce((sum, tx) => sum + Math.max(tx.amount, 0), 0);
+  const monthlySpending = expenses.reduce((sum, tx) => sum + Math.abs(finiteNumber(tx.amount)), 0);
+  const monthlyIncome = incomeTransactions.reduce(
+    (sum, tx) => sum + Math.max(finiteNumber(tx.amount), 0),
+    0
+  );
   const cashflow = monthlyIncome - monthlySpending;
-  const savingsRate = monthlyIncome > 0 ? Math.round((cashflow / monthlyIncome) * 100) : null;
+  const savingsRate = monthlyIncome > 0 ? finitePercent((cashflow / monthlyIncome) * 100) : null;
 
   const breakdownTotals = new Map<string, number>();
   for (const tx of expenses) {
-    breakdownTotals.set(tx.category, (breakdownTotals.get(tx.category) ?? 0) + Math.abs(tx.amount));
+    const category = tx.category?.trim() || "Uncategorized";
+    breakdownTotals.set(
+      category,
+      (breakdownTotals.get(category) ?? 0) + Math.abs(finiteNumber(tx.amount))
+    );
   }
 
   const spendingBreakdown = Array.from(breakdownTotals.entries())
@@ -299,19 +334,28 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
       color: BREAKDOWN_COLORS[index % BREAKDOWN_COLORS.length],
     }));
 
+  const expenseTotalsByCategory = new Map<string, number>();
+  for (const tx of expenses) {
+    const category = normalizedCategory(tx.category);
+    if (!category) continue;
+    expenseTotalsByCategory.set(
+      category,
+      (expenseTotalsByCategory.get(category) ?? 0) + Math.abs(finiteNumber(tx.amount))
+    );
+  }
+
   const budgetUsage = budgets.map((budget) => {
-    const spent = expenses
-      .filter((tx) => tx.category.toLowerCase() === budget.category.toLowerCase())
-      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-    const percent = budget.limitAmount > 0 ? Math.round((spent / budget.limitAmount) * 100) : 0;
-    const remaining = budget.limitAmount - spent;
+    const limitAmount = Math.max(finiteNumber(budget.limitAmount), 0);
+    const spent = expenseTotalsByCategory.get(normalizedCategory(budget.category)) ?? 0;
+    const percent = limitAmount > 0 ? finitePercent((spent / limitAmount) * 100) : spent > 0 ? 100 : 0;
+    const remaining = limitAmount - spent;
     const status: FinanceDashboardData["budgetUsage"][number]["status"] =
       spent === 0 ? "empty" : percent >= 100 ? "over" : percent >= 80 ? "watch" : "on-track";
 
     return {
       id: budget.id,
       category: budget.category,
-      limitAmount: budget.limitAmount,
+      limitAmount,
       spent,
       remaining,
       percent,
@@ -321,10 +365,9 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
 
   const derivedAssets = accounts.reduce((sum, account) => sum + accountAsset(account), 0);
   const derivedLiabilities = accounts.reduce((sum, account) => sum + accountLiability(account), 0);
-  const latestSnapshot = snapshots.at(-1);
-  const assets = latestSnapshot?.assets ?? derivedAssets;
-  const liabilities = latestSnapshot?.liabilities ?? derivedLiabilities;
-  const netWorth = latestSnapshot?.netWorth ?? assets - liabilities;
+  const assets = derivedAssets;
+  const liabilities = derivedLiabilities;
+  const netWorth = assets - liabilities;
 
   const monthStarts = Array.from({ length: 6 }, (_, index) => {
     return new Date(seriesStart.getFullYear(), seriesStart.getMonth() + index, 1);
@@ -334,7 +377,7 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
     const end = nextMonthStart(start);
     return seriesTransactions
       .filter((tx) => tx.date >= start && tx.date < end && isExpense(tx))
-      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+      .reduce((sum, tx) => sum + Math.abs(finiteNumber(tx.amount)), 0);
   });
 
   const cashflowSeries = monthStarts.map((start) => {
@@ -342,10 +385,10 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
     const inMonth = seriesTransactions.filter((tx) => tx.date >= start && tx.date < end);
     const monthIncome = inMonth
       .filter(isIncome)
-      .reduce((sum, tx) => sum + Math.max(tx.amount, 0), 0);
+      .reduce((sum, tx) => sum + Math.max(finiteNumber(tx.amount), 0), 0);
     const monthExpenses = inMonth
       .filter(isExpense)
-      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+      .reduce((sum, tx) => sum + Math.abs(finiteNumber(tx.amount)), 0);
     return monthIncome - monthExpenses;
   });
 
@@ -354,18 +397,16 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
     const inMonth = seriesTransactions.filter((tx) => tx.date >= start && tx.date < end);
     const monthIncome = inMonth
       .filter(isIncome)
-      .reduce((sum, tx) => sum + Math.max(tx.amount, 0), 0);
+      .reduce((sum, tx) => sum + Math.max(finiteNumber(tx.amount), 0), 0);
     const monthExpenses = inMonth
       .filter(isExpense)
-      .reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
-    return monthIncome > 0 ? Math.round(((monthIncome - monthExpenses) / monthIncome) * 100) : 0;
+      .reduce((sum, tx) => sum + Math.abs(finiteNumber(tx.amount)), 0);
+    return monthIncome > 0
+      ? finitePercent(((monthIncome - monthExpenses) / monthIncome) * 100)
+      : 0;
   });
 
-  const netWorthSeries = snapshots.length
-    ? snapshots.map((snapshot) => snapshot.netWorth)
-    : accounts.length
-      ? [netWorth]
-      : [];
+  const netWorthSeries = accounts.length ? [netWorth] : [];
 
   return {
     selectedMonth: monthKey(selectedMonth),
@@ -375,7 +416,7 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
       name: account.name,
       type: account.type,
       institution: account.institution,
-      balance: account.balance,
+      balance: finiteNumber(account.balance),
       currency: account.currency,
     })),
     recentTransactions: recentTransactions.map((transaction) => ({
@@ -385,28 +426,21 @@ export async function getFinanceDashboard(month?: string): Promise<FinanceDashbo
       date: transaction.date.toISOString(),
       merchant: transaction.merchant,
       category: transaction.category,
-      amount: transaction.amount,
+      amount: finiteNumber(transaction.amount),
       type: transaction.type,
       note: transaction.note,
     })),
     budgets: budgets.map((budget) => ({
       id: budget.id,
       category: budget.category,
-      limitAmount: budget.limitAmount,
+      limitAmount: Math.max(finiteNumber(budget.limitAmount), 0),
       month: monthKey(budget.month),
     })),
     savingsGoals: savingsGoals.map((goal) => ({
       id: goal.id,
       title: goal.title,
-      currentAmount: goal.currentAmount,
-      targetAmount: goal.targetAmount,
-    })),
-    netWorthSnapshots: snapshots.map((snapshot) => ({
-      id: snapshot.id,
-      date: snapshot.date.toISOString(),
-      assets: snapshot.assets,
-      liabilities: snapshot.liabilities,
-      netWorth: snapshot.netWorth,
+      currentAmount: Math.max(finiteNumber(goal.currentAmount), 0),
+      targetAmount: Math.max(finiteNumber(goal.targetAmount), 0),
     })),
     metrics: {
       netWorth: {
@@ -640,6 +674,27 @@ export async function updateSavingsGoal(input: SavingsGoalInput & { id: string }
   revalidateFinance();
 }
 
+export async function contributeSavingsGoal(
+  input: SavingsGoalContributionInput
+): Promise<void> {
+  const profileId = await requireProfileId();
+  const existing = await prisma.savingsGoal.findFirst({
+    where: { id: input.id, userId: profileId },
+    select: { id: true },
+  });
+  if (!existing) throw new Error("Savings goal not found");
+
+  await prisma.savingsGoal.update({
+    where: { id: input.id },
+    data: {
+      currentAmount: {
+        increment: contributionMoney(input.amount, "Contribution amount"),
+      },
+    },
+  });
+  revalidateFinance();
+}
+
 export async function deleteSavingsGoal(id: string): Promise<void> {
   const profileId = await requireProfileId();
   const existing = await prisma.savingsGoal.findFirst({
@@ -649,59 +704,5 @@ export async function deleteSavingsGoal(id: string): Promise<void> {
   if (!existing) throw new Error("Savings goal not found");
 
   await prisma.savingsGoal.delete({ where: { id } });
-  revalidateFinance();
-}
-
-export async function createNetWorthSnapshot(input: NetWorthSnapshotInput): Promise<void> {
-  const profileId = await requireProfileId();
-  const assets = positiveMoney(input.assets, "Assets");
-  const liabilities = positiveMoney(input.liabilities, "Liabilities");
-
-  await prisma.netWorthSnapshot.create({
-    data: {
-      userId: profileId,
-      date: dateFromInput(input.date),
-      assets,
-      liabilities,
-      netWorth: assets - liabilities,
-    },
-  });
-  revalidateFinance();
-}
-
-export async function updateNetWorthSnapshot(
-  input: NetWorthSnapshotInput & { id: string }
-): Promise<void> {
-  const profileId = await requireProfileId();
-  const existing = await prisma.netWorthSnapshot.findFirst({
-    where: { id: input.id, userId: profileId },
-    select: { id: true },
-  });
-  if (!existing) throw new Error("Net worth snapshot not found");
-
-  const assets = positiveMoney(input.assets, "Assets");
-  const liabilities = positiveMoney(input.liabilities, "Liabilities");
-
-  await prisma.netWorthSnapshot.update({
-    where: { id: input.id },
-    data: {
-      date: dateFromInput(input.date),
-      assets,
-      liabilities,
-      netWorth: assets - liabilities,
-    },
-  });
-  revalidateFinance();
-}
-
-export async function deleteNetWorthSnapshot(id: string): Promise<void> {
-  const profileId = await requireProfileId();
-  const existing = await prisma.netWorthSnapshot.findFirst({
-    where: { id, userId: profileId },
-    select: { id: true },
-  });
-  if (!existing) throw new Error("Net worth snapshot not found");
-
-  await prisma.netWorthSnapshot.delete({ where: { id } });
   revalidateFinance();
 }

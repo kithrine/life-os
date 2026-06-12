@@ -33,14 +33,6 @@ export type FinanceSavingsGoal = {
   currentAmount: number;
 };
 
-export type FinanceNetWorthSnapshot = {
-  id: string;
-  date: string;
-  assets: number;
-  liabilities: number;
-  netWorth: number;
-};
-
 export type FinanceMetric = {
   value: number;
   series: number[];
@@ -53,7 +45,6 @@ export type FinanceDashboardData = {
   recentTransactions: FinanceTransaction[];
   budgets: FinanceBudget[];
   savingsGoals: FinanceSavingsGoal[];
-  netWorthSnapshots: FinanceNetWorthSnapshot[];
   metrics: {
     netWorth: FinanceMetric & {
       assets: number;
