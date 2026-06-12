@@ -1,6 +1,7 @@
 "use server"
 
 import { auth } from "@clerk/nextjs/server"
+import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 
 // MoodEntry.userId references UserProfile.id, not the Clerk user id
@@ -24,6 +25,8 @@ export async function logMood(mood: number, note?: string): Promise<void> {
     update: { mood, note },
     create: { userId: profileId, mood, note, date: today },
   })
+  revalidatePath("/health")
+  revalidatePath("/dashboard")
 }
 
 export async function getMoodHistory() {

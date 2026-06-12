@@ -7,6 +7,7 @@ import { getHealthScore } from "@/actions/life-score"
 const mocks = vi.hoisted(() => ({
   userProfileFindUnique: vi.fn(),
   habitCreate: vi.fn(),
+  habitFindFirst: vi.fn(),
   habitFindMany: vi.fn(),
   habitUpdate: vi.fn(),
   habitDelete: vi.fn(),
@@ -21,6 +22,10 @@ vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "test-user-id" }),
 }))
 
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}))
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     userProfile: {
@@ -28,6 +33,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     habit: {
       create: mocks.habitCreate,
+      findFirst: mocks.habitFindFirst,
       findMany: mocks.habitFindMany,
       update: mocks.habitUpdate,
       delete: mocks.habitDelete,
@@ -53,15 +59,19 @@ beforeEach(() => {
   })
   mocks.habitCreate.mockResolvedValue({
     id: "habit-1",
-    userId: "test-user-id",
+    userId: "profile-1",
     title: "Exercise",
     streak: 0,
     lastCompleted: null,
   })
+  mocks.habitFindFirst.mockResolvedValue({
+    id: "habit-1",
+    userId: "profile-1",
+  })
   mocks.habitFindMany.mockResolvedValue([
     {
       id: "habit-1",
-      userId: "test-user-id",
+      userId: "profile-1",
       title: "Exercise",
       streak: 1,
       lastCompleted: new Date(),

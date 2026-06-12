@@ -5,6 +5,10 @@ vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "test-user-id" }),
 }))
 
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+}))
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     userProfile: {
@@ -15,6 +19,7 @@ vi.mock("@/lib/prisma", () => ({
     },
     habit: {
       create: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue({ id: "habit-1", userId: "profile-1" }),
       findMany: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),

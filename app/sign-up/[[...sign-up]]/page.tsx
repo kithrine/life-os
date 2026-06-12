@@ -34,9 +34,11 @@ export default function SignUpPage() {
         </p>
 
         <SignUp
+          routing="path"
+          path="/sign-up"
           forceRedirectUrl="/onboarding"
           fallbackRedirectUrl="/onboarding"
-          signInUrl="/"
+          signInUrl="/sign-in"
           appearance={{
             elements: {
               rootBox: "w-full max-w-md",

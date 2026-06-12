@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Summers
 SUMMER-AGENTS.md
+
+# Clerk Stuff, so the team stops pushing temporary authentication keys to the master repository.
+.clerk/
