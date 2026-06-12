@@ -20,10 +20,13 @@
     "prisma:pull": "prisma db pull"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.71",
+    "@ai-sdk/react": "^3.0.205",
     "@base-ui/react": "^1.5.0",
     "@clerk/nextjs": "^7.5.1",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
+    "ai": "^6.0.203",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",
