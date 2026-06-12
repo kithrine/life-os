@@ -40,11 +40,6 @@ export default async function DashboardPage() {
   if (!clerkUserId) redirect("/");
 
   const clerkUser = await currentUser();
-  const firstName = clerkUser?.firstName ?? "there";
-
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
   const todayEnd = new Date(new Date().setHours(23, 59, 59, 999));
@@ -146,6 +141,7 @@ export default async function DashboardPage() {
   const netWorth = financialAccounts.length > 0 ? derivedAssets - derivedLiabilities : null;
   const hasFinanceData =
     financialAccounts.length > 0 || monthlyTransactions.length > 0 || savingsGoal !== null;
+  const firstName = profile?.firstName?.trim() || clerkUser?.firstName?.trim() || "there";
 
   return (
     <div className="relative min-h-screen bg-gray-50">
@@ -157,7 +153,7 @@ export default async function DashboardPage() {
         {/* Greeting overlaid on hero */}
         <div className="pt-6 pb-6 sm:pt-8">
           <h1 className="text-2xl font-extrabold text-gray-900 sm:text-3xl">
-            Hello, there!
+            Hello, {firstName}!
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             Here&apos;s how your life is looking today.

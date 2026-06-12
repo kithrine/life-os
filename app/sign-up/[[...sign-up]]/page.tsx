@@ -1,6 +1,6 @@
 import Image from "next/image";
-import { SignUp } from "@clerk/nextjs";
 import { LifeOSLogo } from "@/components/auth/lifeos-logo";
+import { SignUpIdentityForm } from "./sign-up-identity-form";
 
 export default function SignUpPage() {
   return (
@@ -33,20 +33,8 @@ export default function SignUpPage() {
           Start with a short assessment so LifeOS can shape your personal system.
         </p>
 
-        <SignUp
-          routing="path"
-          path="/sign-up"
-          forceRedirectUrl="/onboarding"
-          fallbackRedirectUrl="/onboarding"
-          signInUrl="/sign-in"
-          appearance={{
-            elements: {
-              rootBox: "w-full max-w-md",
-              cardBox: "w-full rounded-2xl shadow-xl",
-              card: "rounded-2xl",
-            },
-          }}
-        />
+          <SignUpIdentityForm />
+        </div>
       </div>
     </main>
   );
