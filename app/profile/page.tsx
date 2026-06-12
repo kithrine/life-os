@@ -35,8 +35,6 @@ export default async function ProfilePage() {
         imageUrl: clerkUser?.imageUrl ?? null,
       }}
       profile={{
-        firstName: profile.firstName,
-        lastName: profile.lastName,
         name: profile.name,
         lifeStage: profile.lifeStage,
         currentSituation: profile.currentSituation,

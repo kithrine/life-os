@@ -10,8 +10,6 @@ datasource db {
 model UserProfile {
   id                  String   @id @default(cuid())
   clerkUserId         String   @unique
-  firstName           String?
-  lastName            String?
   name                String?
   lifeStage           String?
   currentSituation    String?
@@ -210,3 +208,4 @@ model Skill {
 
   user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
