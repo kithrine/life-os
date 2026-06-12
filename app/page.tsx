@@ -31,7 +31,7 @@ export default async function HomePage() {
         <p className="text-sm text-gray-500 mb-8">Your life. Optimized.</p>
 
         {/* Hero copy */}
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 text-center leading-tight mb-3">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 text-center leading-tight mb-3 font-geist">
           One system.
           <br />
           Every part of{" "}
