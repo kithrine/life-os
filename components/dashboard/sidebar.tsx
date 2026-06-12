@@ -101,7 +101,7 @@ function SidebarContent({
             <Bot className="h-4 w-4 text-indigo-600" />
           </span>
           <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-            AI Coach
+            AI Assistant
           </span>
           <Sparkles className="ml-auto h-3.5 w-3.5 text-violet-500" />
         </button>
