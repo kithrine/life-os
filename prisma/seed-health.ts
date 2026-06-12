@@ -2,17 +2,6 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 dotenv.config();
 
-import { Pool } from "pg";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../lib/generated/prisma/client";
-
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL?.includes("supabase") ? { rejectUnauthorized: false } : undefined,
-});
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
-
 // Midnight-normalized dates so HabitLog/MoodEntry unique constraints
 // ([habitId, date] / [userId, date]) make reruns idempotent
 function daysAgo(n: number): Date {
@@ -23,6 +12,10 @@ function daysAgo(n: number): Date {
 }
 
 async function main() {
+  // The shared client reads DATABASE_URL at import time, so this import
+  // must stay dynamic — after dotenv has populated the env above
+  const { prisma } = await import("@/lib/prisma");
+
   console.log("Seeding health feature demo data...");
 
   const user = await prisma.userProfile.upsert({
@@ -109,14 +102,17 @@ async function main() {
   console.log(
     `Done. Demo User seeded with ${habitCount} habits, ${logCount} habit logs, ${moodCount} mood entries.`
   );
+
+  await prisma.$disconnect();
 }
 
 main()
+  .then(() => {
+    // The shared client's pg pool is not exported, so it cannot be ended
+    // here; exit explicitly so the open pool does not hang the process
+    process.exit(0);
+  })
   .catch((e) => {
     console.error(e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
   });
