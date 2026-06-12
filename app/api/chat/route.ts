@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { openai, type OpenAILanguageModelResponsesOptions } from "@ai-sdk/openai";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
@@ -100,6 +100,11 @@ export async function POST(req: Request) {
   const lifeOSContext = await getLifeOSContextForClerkUser(clerkUserId);
   const result = streamText({
     model: openai.responses(process.env.OPENAI_MODEL ?? "gpt-5.5"),
+    providerOptions: {
+      openai: {
+        parallelToolCalls: true,
+      } satisfies OpenAILanguageModelResponsesOptions,
+    },
     system: buildAiCoachSystemPrompt(lifeOSContext),
     messages: await convertToModelMessages(body.messages),
     tools: {
@@ -182,6 +187,115 @@ export async function POST(req: Request) {
           revalidatePath("/dashboard");
 
           return { success: true, goal };
+        },
+      }),
+      addHabit: tool({
+        description: "Add a new LifeOS health habit for the user.",
+        inputSchema: z.object({
+          title: z.string().min(1).describe("Habit title."),
+        }),
+        execute: async ({ title }) => {
+          const profileId = await requireProfileId(clerkUserId);
+          const habit = await prisma.habit.create({
+            data: {
+              userId: profileId,
+              title: title.trim(),
+            },
+            select: {
+              id: true,
+              title: true,
+              streak: true,
+              lastCompleted: true,
+            },
+          });
+
+          revalidatePath("/health");
+          revalidatePath("/dashboard");
+
+          return {
+            success: true,
+            habit: {
+              ...habit,
+              lastCompleted: habit.lastCompleted?.toISOString() ?? null,
+            },
+          };
+        },
+      }),
+      logMood: tool({
+        description: "Log or update today's LifeOS mood entry for the user.",
+        inputSchema: z.object({
+          value: z
+            .number()
+            .int()
+            .min(1)
+            .max(5)
+            .describe("Mood value from 1 to 5."),
+          note: z.string().min(1).optional().describe("Optional mood note."),
+        }),
+        execute: async ({ value, note }) => {
+          const profileId = await requireProfileId(clerkUserId);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const moodEntry = await prisma.moodEntry.upsert({
+            where: { userId_date: { userId: profileId, date: today } },
+            update: {
+              mood: value,
+              note: note?.trim(),
+            },
+            create: {
+              userId: profileId,
+              mood: value,
+              note: note?.trim(),
+              date: today,
+            },
+            select: {
+              id: true,
+              mood: true,
+              note: true,
+              date: true,
+            },
+          });
+
+          revalidatePath("/health");
+          revalidatePath("/dashboard");
+
+          return {
+            success: true,
+            moodEntry: {
+              ...moodEntry,
+              date: moodEntry.date.toISOString(),
+            },
+          };
+        },
+      }),
+      addSkill: tool({
+        description: "Add a new LifeOS career skill for the user.",
+        inputSchema: z.object({
+          name: z.string().min(1).describe("Skill name."),
+          level: z
+            .enum(["beginner", "intermediate", "advanced"])
+            .describe("Current skill level."),
+        }),
+        execute: async ({ name, level }) => {
+          const profileId = await requireProfileId(clerkUserId);
+          const skill = await prisma.skill.create({
+            data: {
+              userId: profileId,
+              name: name.trim(),
+              level,
+            },
+            select: {
+              id: true,
+              name: true,
+              level: true,
+            },
+          });
+
+          revalidatePath("/career");
+          revalidatePath("/dashboard");
+
+          return { success: true, skill };
         },
       }),
     },
