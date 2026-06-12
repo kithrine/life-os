@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useSignIn } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,7 +19,6 @@ type OAuthStrategy = "oauth_google" | "oauth_microsoft" | "oauth_apple";
 
 export function LoginForm() {
   const { signIn } = useSignIn();
-  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -68,10 +66,10 @@ export function LoginForm() {
         return;
       }
 
-      if (signIn.status === "complete") {
-        await signIn.finalize();
-        router.push("/dashboard");
-      }
+      await signIn.finalize();
+      window.location.href = "/dashboard";
+    } catch {
+      setAuthError("Something went wrong, please try again");
     } finally {
       setIsLoading(false);
     }
