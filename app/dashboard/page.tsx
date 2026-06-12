@@ -103,16 +103,17 @@ export default async function DashboardPage() {
     icon: "✅",
   }));
   const habitsCompletedToday = allHabits.filter((h) =>
-    h.habitLogs.some((l) => l.completed)
+    (h.habitLogs ?? []).some((l) => l.completed)
   ).length;
-  const moodToday = profile?.moodEntries[0]?.mood ?? null;
+  const moodToday = profile?.moodEntries?.[0]?.mood ?? null;
 
-  const savingsGoal = profile?.savingsGoals[0]
+  const primarySavingsGoal = profile?.savingsGoals?.[0];
+  const savingsGoal = primarySavingsGoal
     ? {
-        id: profile.savingsGoals[0].id,
-        name: profile.savingsGoals[0].title,
-        currentAmount: Math.max(finiteNumber(profile.savingsGoals[0].currentAmount), 0),
-        targetAmount: Math.max(finiteNumber(profile.savingsGoals[0].targetAmount), 0),
+        id: primarySavingsGoal.id,
+        name: primarySavingsGoal.title,
+        currentAmount: Math.max(finiteNumber(primarySavingsGoal.currentAmount), 0),
+        targetAmount: Math.max(finiteNumber(primarySavingsGoal.targetAmount), 0),
       }
     : null;
 
