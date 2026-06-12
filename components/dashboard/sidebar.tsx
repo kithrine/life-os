@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useUser, useClerk } from "@clerk/nextjs";
 import {
   BarChart2,
+  Bot,
   Briefcase,
   ChevronRight,
   DollarSign,
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LifeOSLogo } from "@/components/auth/lifeos-logo";
+import { AiCoachDrawer } from "@/components/ai-coach/ai-coach-drawer";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -26,11 +28,21 @@ const NAV_ITEMS = [
   { label: "Finance", href: "/finance", icon: DollarSign },
   { label: "Career", href: "/career", icon: Briefcase },
   { label: "Health", href: "/health", icon: Heart },
-  { label: "AI Coach", href: "/ai-coach", icon: Sparkles },
+];
+
+const SECONDARY_NAV_ITEMS = [
   { label: "Insights", href: "/insights", icon: BarChart2 },
 ];
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({
+  onNavigate,
+  onOpenAiCoach,
+  aiCoachOpen,
+}: {
+  onNavigate?: () => void;
+  onOpenAiCoach: () => void;
+  aiCoachOpen: boolean;
+}) {
   const pathname = usePathname();
   const { user } = useUser();
   const { signOut } = useClerk();
@@ -52,6 +64,48 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
       {/* Nav links */}
       <nav className="flex-1 space-y-1 px-3 pt-2">
         {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition",
+                active
+                  ? "bg-indigo-50 text-indigo-600"
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </Link>
+          );
+        })}
+        <button
+          type="button"
+          aria-pressed={aiCoachOpen}
+          onClick={() => {
+            onOpenAiCoach();
+            onNavigate?.();
+          }}
+          className={cn(
+            "group relative flex w-full items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 text-sm font-semibold transition",
+            aiCoachOpen
+              ? "bg-gradient-to-r from-indigo-50 to-violet-50 shadow-sm ring-1 ring-indigo-100"
+              : "bg-indigo-50/70 text-gray-800 hover:bg-gradient-to-r hover:from-indigo-50 hover:to-violet-50 hover:ring-1 hover:ring-indigo-100"
+          )}
+        >
+          <span className="absolute inset-y-1 left-1 w-1 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500 opacity-0 transition group-hover:opacity-100" />
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-indigo-100">
+            <Bot className="h-4 w-4 text-indigo-600" />
+          </span>
+          <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+            AI Coach
+          </span>
+          <Sparkles className="ml-auto h-3.5 w-3.5 text-violet-500" />
+        </button>
+        {SECONDARY_NAV_ITEMS.map(({ label, href, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
@@ -135,13 +189,18 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 
 export function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [aiCoachOpen, setAiCoachOpen] = useState(false);
 
   return (
     <>
       {/* Desktop sidebar */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-gray-200 bg-white md:block">
-        <SidebarContent />
+        <SidebarContent
+          aiCoachOpen={aiCoachOpen}
+          onOpenAiCoach={() => setAiCoachOpen((open) => !open)}
+        />
       </aside>
+      <AiCoachDrawer open={aiCoachOpen} onClose={() => setAiCoachOpen(false)} />
 
       {/* Mobile top bar */}
       <div className="fixed inset-x-0 top-0 z-40 flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3 md:hidden">
@@ -175,7 +234,11 @@ export function Sidebar() {
             >
               <X className="h-5 w-5" />
             </button>
-            <SidebarContent onNavigate={() => setMobileOpen(false)} />
+            <SidebarContent
+              aiCoachOpen={aiCoachOpen}
+              onNavigate={() => setMobileOpen(false)}
+              onOpenAiCoach={() => setAiCoachOpen((open) => !open)}
+            />
           </aside>
         </div>
       )}
