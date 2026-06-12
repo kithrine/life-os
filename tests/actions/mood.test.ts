@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest"
-import { logMood, getMoodHistory } from "@/actions/mood"
+import { logMood, getMoodHistory, deleteMoodEntry } from "@/actions/mood"
 
 vi.mock("@clerk/nextjs/server", () => ({
   auth: vi.fn().mockResolvedValue({ userId: "test-user-id" }),
@@ -21,6 +21,8 @@ vi.mock("@/lib/prisma", () => ({
       create: vi.fn(),
       upsert: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue({ id: "mood-1", userId: "profile-1" }),
+      delete: vi.fn(),
     },
   },
 }))
@@ -47,5 +49,15 @@ describe("mood actions", () => {
 
   it("should fetch mood history", async () => {
     await expect(getMoodHistory()).resolves.toBeDefined()
+  })
+
+  it("should delete an owned mood entry", async () => {
+    await expect(deleteMoodEntry("mood-1")).resolves.not.toThrow()
+  })
+
+  it("should reject deleting a mood entry that is not found", async () => {
+    const { prisma } = await import("@/lib/prisma")
+    vi.mocked(prisma.moodEntry.findFirst).mockResolvedValueOnce(null)
+    await expect(deleteMoodEntry("mood-x")).rejects.toThrow("Mood entry not found")
   })
 })
