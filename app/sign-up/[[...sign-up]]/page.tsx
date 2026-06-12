@@ -35,7 +35,6 @@ export default function SignUpPage() {
 
           <SignUpIdentityForm />
         </div>
-      </div>
     </main>
   );
 }
